@@ -132,6 +132,79 @@ def schedule():
     return render_template("schedule.html")
 
 
+@app.route("/send-message", methods=["GET", "POST"])
+def send_message():
+    if "admin" not in session:
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        content = request.form["message"]
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "INSERT INTO Message (content) VALUES (?)",
+            (content,)
+        )
+
+        conn.commit()
+        conn.close()
+
+        return render_template("send_message.html", msg="Message sent successfully")
+
+    return render_template("send_message.html")
+
+
+@app.route("/display-message")
+def display_message():
+    conn = get_db_connection()
+    msg = conn.execute(
+        "SELECT content FROM Message ORDER BY created_at DESC LIMIT 1"
+    ).fetchone()
+    conn.close()
+
+    message = msg["content"] if msg else "No message"
+
+    return render_template("display_message.html", message=message)
+
+from logic.calculate_attendance import overall_attendance
+
+@app.route("/warnings")
+def warnings():
+    if "admin" not in session:
+        return redirect(url_for("login"))
+
+    conn = get_db_connection()
+    students = conn.execute("SELECT * FROM Student").fetchall()
+    conn.close()
+
+    warning_list = []
+
+    for s in students:
+        percent = overall_attendance(s["student_id"])
+        if percent < 75:
+            warning_list.append({
+                "roll": s["roll_no"],
+                "name": s["name"],
+                "percent": percent
+            })
+
+    return render_template("warning.html", students=warning_list)
+
+from flask import send_file
+from logic.export_excel import export_attendance_excel
+
+@app.route("/export-excel")
+def export_excel():
+    if "admin" not in session:
+        return redirect(url_for("login"))
+
+    file_name = "attendance_report.xlsx"
+    export_attendance_excel(file_name)
+
+    return send_file(file_name, as_attachment=True)
+
+
 if __name__ == "__main__":
     app.run(debug=True)
-

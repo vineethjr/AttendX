@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AttendX | Attendance Warning</title>
+</head>
+<body>
+
+<h2>⚠️ Low Attendance Warning List</h2>
+
+<table border="1" cellpadding="8">
+    <tr>
+        <th>Roll No</th>
+        <th>Name</th>
+        <th>Overall %</th>
+    </tr>
+
+    {% for s in students %}
+    <tr>
+        <td>{{ s.roll }}</td>
+        <td>{{ s.name }}</td>
+        <td>{{ s.percent }}%</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<br>
+<a href="/dashboard">Back to Dashboard</a>
+
+</body>
+</html>

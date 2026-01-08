@@ -63,6 +63,18 @@ CREATE TABLE IF NOT EXISTS ClassSchedule (
 
 print("ClassSchedule table created.")
 
+# Message table (for classroom display)
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS Message (
+    message_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+''')
+
+print("Message table created.")
+
+
 
 
 # Commit and close
