@@ -2,19 +2,24 @@
 <html>
 <head>
     <title>AttendX | Classroom Display</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
+
     <meta http-equiv="refresh" content="5">
-    <style>
-        body {
-            text-align: center;
-            font-size: 36px;
-            padding-top: 100px;
-        }
-    </style>
-</head>
-<body>
+<style>
+body {
+    background-color: #0f172a;
+    color: white;
+    font-family: Arial;
+    text-align: center;
+    padding-top: 120px;
+}
+p {
+    font-size: 40px;
+}
+</style>
 
-<h2>Classroom Announcement</h2>
-
+<h2>📢 Announcement</h2>
 <p>{{ message }}</p>
 
 </body>

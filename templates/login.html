@@ -3,22 +3,45 @@
 <head>
     <title>AttendX | Admin Login</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
+
 </head>
 <body>
 
-<div class="login-box">
-    <h2>AttendX Admin Login</h2>
+<div class="login-wrapper">
 
-    {% if error %}
-        <p style="color:red;">{{ error }}</p>
-    {% endif %}
+    <div class="login-card">
 
-    <form method="POST">
-        <input type="text" name="username" placeholder="Username" required>
-        <input type="password" name="password" placeholder="Password" required>
-        <button type="submit">Login</button>
-    </form>
+        <div class="login-logo">
+            <img src="{{ url_for('static', filename='images/attendx-logo.svg') }}" width="180">
+        </div>
+
+        <h2>Admin Login</h2>
+        <div class="login-sub">
+            Smart Attendance Management System
+        </div>
+
+        <form method="POST">
+            <input type="text" name="username" placeholder="Username" required>
+            <input type="password" name="password" placeholder="Password" required>
+
+            {% if error %}
+            <p style="color:#ef4444; font-size:14px;">{{ error }}</p>
+            {% endif %}
+
+            <button type="submit" style="width:100%">Sign In</button>
+        </form>
+
+        <div class="login-footer">
+            © AttendX | Power-Efficient Smart Attendance
+           <p>All Rights Reserved @vjr_associates</p> 
+        </div>
+
+    </div>
+
 </div>
+
+
 
 </body>
 </html>

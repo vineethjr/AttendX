@@ -3,32 +3,29 @@
 <head>
     <title>AttendX | Register Student</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
+
 </head>
 <body>
 
-<h2>Student Registration</h2>
+<header>AttendX – Student Registration</header>
 
-<form method="POST">
-    <label>Roll Number</label><br>
-    <input type="text" name="roll" required><br><br>
+<div class="container">
+    <div class="card">
+        <form method="POST">
+            <input name="roll" placeholder="Roll Number" required>
+            <input name="name" placeholder="Student Name" required>
+            <input name="dept" placeholder="Department" required>
+            <input name="sem" placeholder="Semester" required>
 
-    <label>Student Name</label><br>
-    <input type="text" name="name" required><br><br>
+            <button type="submit">Register</button>
+        </form>
 
-    <label>Department</label><br>
-    <input type="text" name="dept" required><br><br>
-
-    <label>Semester</label><br>
-    <input type="text" name="sem" required><br><br>
-
-    <button type="submit">Register Student</button>
-</form>
-
-{% if msg %}
-<p style="color: green;">{{ msg }}</p>
-{% endif %}
-
-<br>
+        {% if msg %}
+        <p style="color:green">{{ msg }}</p>
+        {% endif %}
+    </div>
+</div>
 <a href="/dashboard">Back to Dashboard</a>
 
 </body>

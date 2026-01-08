@@ -1,0 +1,17 @@
+<svg width="220" height="60" viewBox="0 0 220 60" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#4f46e5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3730a3;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Icon -->
+  <rect x="0" y="5" rx="14" ry="14" width="50" height="50" fill="url(#grad)"/>
+  <path d="M16 32l7 7 11-14" stroke="white" stroke-width="4" fill="none" stroke-linecap="round"/>
+
+  <!-- Text -->
+  <text x="70" y="42" font-family="Segoe UI, Arial" font-size="32" font-weight="700" fill="#1f2937">
+    Attend<tspan fill="#4f46e5">X</tspan>
+  </text>
+</svg>

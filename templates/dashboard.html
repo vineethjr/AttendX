@@ -2,24 +2,83 @@
 <html>
 <head>
     <title>AttendX | Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
+
 </head>
 <body>
 
-<h1>AttendX Admin Dashboard</h1>
+<!-- HEADER -->
+<div class="dashboard-header">
+    <img src="{{ url_for('static', filename='images/attendx-logo.svg') }}">
+    <div class="right">
+        Smart Attendance • Admin Panel
+    </div>
+</div>
 
-<ul>
-    <li><a href="/register-student">Register Student</a></li>
-    <li><a href="/students">View Students</a></li>
-    <li><a href="/schedule">Class Schedule</a></li>
-    <li><a href="/send-message">Send Message</a></li>
-    <li><a href="/export-excel">Download Excel Report</a></li>
+<!-- CONTENT -->
+<div class="dashboard-container">
 
-</ul>
+    <div class="feature-grid">
 
+        <a href="/register-student" class="feature-card">
+            <div class="feature-icon">👨‍🎓</div>
+            <div class="feature-title">Register Student</div>
+            <div class="feature-desc">
+                Add new students to the system securely
+            </div>
+        </a>
 
+        <a href="/students" class="feature-card">
+            <div class="feature-icon">📋</div>
+            <div class="feature-title">View Students</div>
+            <div class="feature-desc">
+                Browse and manage registered students
+            </div>
+        </a>
 
-<br>
-<a href="/logout">Logout</a>
+        <a href="/schedule" class="feature-card">
+            <div class="feature-icon">📅</div>
+            <div class="feature-title">Class Schedule</div>
+            <div class="feature-desc">
+                Define timetable & free periods
+            </div>
+        </a>
+
+        <a href="/send-message" class="feature-card">
+            <div class="feature-icon">📢</div>
+            <div class="feature-title">Send Message</div>
+            <div class="feature-desc">
+                Broadcast announcements to classroom
+            </div>
+        </a>
+
+        <a href="/warnings" class="feature-card">
+            <div class="feature-icon">⚠️</div>
+            <div class="feature-title">Attendance Warnings</div>
+            <div class="feature-desc">
+                Identify low-attendance students
+            </div>
+        </a>
+
+        <a href="/export-excel" class="feature-card">
+            <div class="feature-icon">📊</div>
+            <div class="feature-title">Export Reports</div>
+            <div class="feature-desc">
+                Download attendance as Excel sheets
+            </div>
+        </a>
+
+    </div>
+
+    <!-- FOOTER -->
+    <div class="dashboard-footer">
+        <div>© AttendX — Power-Efficient Smart Attendance</div>
+        <a href="/logout">Logout</a>
+    </div>
+
+</div>
+
 
 </body>
 </html>

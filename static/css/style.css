@@ -1,0 +1,369 @@
+/* =====================
+   GLOBAL THEME
+===================== */
+:root {
+    --primary: #4f46e5;
+    --primary-dark: #3730a3;
+    --accent: #22c55e;
+    --danger: #ef4444;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --text: #1f2937;
+    --muted: #6b7280;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: "Inter", "Segoe UI", Arial, sans-serif;
+    background: linear-gradient(120deg, #eef2ff, #f8fafc);
+    color: var(--text);
+    min-height: 100vh;
+}
+
+/* =====================
+   HEADER
+===================== */
+header {
+    background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+    color: white;
+    padding: 18px 30px;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* =====================
+   CONTAINER & CARDS
+===================== */
+.container {
+    padding: 30px;
+    animation: fadeIn 0.6s ease-in;
+}
+
+.card {
+    background: var(--card);
+    padding: 25px;
+    border-radius: 14px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    margin-bottom: 20px;
+    animation: slideUp 0.5s ease;
+}
+
+/* =====================
+   FORMS
+===================== */
+input, select, textarea {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid #d1d5db;
+    font-size: 15px;
+    transition: all 0.25s ease;
+}
+
+input:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(79,70,229,0.15);
+}
+
+/* =====================
+   BUTTONS
+===================== */
+button {
+    background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(79,70,229,0.3);
+}
+
+/* =====================
+   LINKS
+===================== */
+a {
+    text-decoration: none;
+    color: var(--primary);
+    font-weight: 500;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* =====================
+   TABLES
+===================== */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+th {
+    background: #eef2ff;
+    padding: 12px;
+    font-weight: 600;
+    text-align: left;
+}
+
+td {
+    padding: 12px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+/* =====================
+   DASHBOARD GRID
+===================== */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 22px;
+}
+
+.tile {
+    background: linear-gradient(145deg, #ffffff, #f1f5f9);
+    padding: 25px;
+    border-radius: 16px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 16px;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.tile::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        120deg,
+        transparent,
+        rgba(79,70,229,0.12),
+        transparent
+    );
+    transform: translateX(-100%);
+}
+
+.tile:hover::after {
+    transform: translateX(100%);
+    transition: transform 0.6s ease;
+}
+
+.tile:hover {
+    transform: translateY(-6px) scale(1.02);
+    box-shadow: 0 18px 40px rgba(0,0,0,0.15);
+}
+
+/* =====================
+   STATUS COLORS
+===================== */
+.status-good {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.status-bad {
+    color: var(--danger);
+    font-weight: 600;
+}
+
+/* =====================
+   ANIMATIONS
+===================== */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+/* =====================
+   LOGIN PAGE STYLING
+===================== */
+.login-wrapper {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+        radial-gradient(circle at top left, #eef2ff, transparent 40%),
+        radial-gradient(circle at bottom right, #e0e7ff, transparent 40%),
+        linear-gradient(120deg, #f8fafc, #eef2ff);
+}
+
+.login-card {
+    width: 380px;
+    padding: 40px;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(14px);
+    border-radius: 20px;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.15);
+    animation: slideUp 0.6s ease;
+}
+
+.login-card h2 {
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.login-sub {
+    text-align: center;
+    color: #6b7280;
+    font-size: 14px;
+    margin-bottom: 30px;
+}
+
+.login-logo {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.login-card input {
+    margin-bottom: 18px;
+}
+
+.login-footer {
+    text-align: center;
+    font-size: 13px;
+    color: #6b7280;
+    margin-top: 20px;
+}
+
+/* =====================
+   DASHBOARD HEADER
+===================== */
+.dashboard-header {
+    background: linear-gradient(
+        120deg,
+        #4f46e5,
+        #6366f1,
+        #22c55e
+    );
+    background-size: 200% 200%;
+    animation: gradientMove 8s ease infinite;
+    padding: 22px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: white;
+}
+
+.dashboard-header img {
+    height: 42px;
+}
+
+.dashboard-header .right {
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+/* =====================
+   DASHBOARD LAYOUT
+===================== */
+.dashboard-container {
+    padding: 35px;
+}
+
+/* =====================
+   FEATURE CARDS
+===================== */
+.feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 26px;
+}
+
+.feature-card {
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(14px);
+    border-radius: 20px;
+    padding: 30px 25px;
+    text-align: left;
+    box-shadow: 0 20px 45px rgba(0,0,0,0.12);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.35s ease;
+}
+
+.feature-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 5px;
+    background: linear-gradient(
+        90deg,
+        #4f46e5,
+        #22c55e
+    );
+}
+
+.feature-card:hover {
+    transform: translateY(-8px) scale(1.03);
+    box-shadow: 0 30px 70px rgba(0,0,0,0.18);
+}
+
+.feature-icon {
+    font-size: 34px;
+    margin-bottom: 12px;
+}
+
+.feature-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.feature-desc {
+    font-size: 14px;
+    color: #6b7280;
+}
+
+/* =====================
+   DASHBOARD FOOTER
+===================== */
+.dashboard-footer {
+    margin-top: 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    color: #6b7280;
+}
+
+/* =====================
+   ANIMATIONS
+===================== */
+@keyframes gradientMove {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
