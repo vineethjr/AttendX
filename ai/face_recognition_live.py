@@ -1,7 +1,13 @@
+import sys
+import os
 import cv2
 import face_recognition
-import os
 import warnings
+
+# 🔹 Add project root to Python path (IMPORTANT)
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from logic.mark_attendance import mark_scan
 
 # Optional: hide harmless warnings
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -13,23 +19,20 @@ known_names = []
 
 print("Loading student face data...")
 
-# Load known faces
+# ---------------- LOAD STORED FACE DATA ----------------
 for folder in os.listdir(KNOWN_FACES_DIR):
     folder_path = os.path.join(KNOWN_FACES_DIR, folder)
 
-    # Skip non-directories
     if not os.path.isdir(folder_path):
         continue
 
-    name = folder  # ✅ use roll number / folder name directly
+    name = folder  # roll number is folder name
 
     for image_name in os.listdir(folder_path):
-        image_path = os.path.join(folder_path, image_name)
-
-        # Skip non-image files
-        if not image_name.lower().endswith((".jpg", ".png", ".jpeg")):
+        if not image_name.lower().endswith((".jpg", ".jpeg", ".png")):
             continue
 
+        image_path = os.path.join(folder_path, image_name)
         image = face_recognition.load_image_file(image_path)
         encodings = face_recognition.face_encodings(image)
 
@@ -39,13 +42,18 @@ for folder in os.listdir(KNOWN_FACES_DIR):
 
 print("Face data loaded successfully")
 
-# Camera (0 is default webcam)
+# ---------------- ATTENDANCE SETTINGS ----------------
+SCAN_NO = 1                 # Simulating scan 1
+marked_today = set()        # Prevent duplicate DB inserts
+
+# ---------------- CAMERA ----------------
 cap = cv2.VideoCapture(0)
 
 if not cap.isOpened():
     print("Error: Camera not accessible")
     exit()
 
+# ---------------- LIVE RECOGNITION ----------------
 while True:
     ret, frame = cap.read()
     if not ret:
@@ -57,6 +65,7 @@ while True:
     face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
 
     for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
+
         matches = face_recognition.compare_faces(
             known_encodings, face_encoding, tolerance=0.5
         )
@@ -67,6 +76,18 @@ while True:
             matched_index = matches.index(True)
             name = known_names[matched_index]
 
+            # 🔗 INTEGRATION STEP (ATTENDANCE INSERT)
+            if name not in marked_today:
+                mark_scan(
+                    roll_no=name,
+                    subject_name="Demo Subject",
+                    scan_no=SCAN_NO,
+                    status=1
+                )
+                marked_today.add(name)
+                print(f"Scan {SCAN_NO}: attendance recorded for {name}")
+
+        # ✅ DRAW RECTANGLE AND NAME (INSIDE LOOP)
         cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
         cv2.putText(
             frame,

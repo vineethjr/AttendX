@@ -1,36 +1,49 @@
 import sqlite3
+from datetime import date
 
-def mark_attendance(student_id, subject_id, date, status):
-    """
-    Marks attendance for a student in a subject on a specific date.
-    status: 1 for Present, 0 for Absent
-    Ensures one attendance per student per subject per day using UNIQUE constraint.
-    """
-    conn = sqlite3.connect('db/attendance.db')
+def mark_scan(roll_no, subject_name, scan_no, status):
+    today = date.today().isoformat()
+
+    conn = sqlite3.connect("db/attendance.db")
     cursor = conn.cursor()
 
-    try:
-        # Insert attendance; UNIQUE constraint prevents duplicates
-        cursor.execute('''
-        INSERT OR IGNORE INTO Attendance (student_id, subject_id, date, status)
-        VALUES (?, ?, ?, ?)
-        ''', (student_id, subject_id, date, status))
+    # Get student_id
+    student = cursor.execute(
+        "SELECT student_id FROM Student WHERE roll_no=?",
+        (roll_no,)
+    ).fetchone()
 
-        if cursor.rowcount > 0:
-            status_text = "Present" if status == 1 else "Absent"
-            print(f"Attendance marked: Student {student_id}, Subject {subject_id}, Date {date}, Status {status_text}")
-        else:
-            print(f"Attendance already exists for Student {student_id}, Subject {subject_id}, Date {date}")
-
-        conn.commit()
-    except sqlite3.Error as e:
-        print(f"Error marking attendance: {e}")
-    finally:
+    if not student:
         conn.close()
+        return False
 
-# Example usage
-if __name__ == "__main__":
-    # Mark Alice present
-    mark_attendance(1, 1, '2023-10-09', 1)
-    # Try to mark again (should be ignored)
-    mark_attendance(1, 1, '2023-10-09', 0)
+    student_id = student[0]
+
+    # Get subject_id
+    cursor.execute(
+    "INSERT OR IGNORE INTO Subject (subject_name) VALUES (?)",
+    (subject_name,)
+)
+
+
+    subject_id = cursor.execute(
+        "SELECT subject_id FROM Subject WHERE subject_name=?",
+        (subject_name,)
+    ).fetchone()[0]
+
+    # Insert scan record (unique per scan)
+    try:
+        cursor.execute(
+            """
+            INSERT INTO Attendance
+            (student_id, subject_id, date, scan_no, status)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (student_id, subject_id, today, scan_no, status)
+        )
+    except sqlite3.IntegrityError:
+        pass  # scan already recorded
+
+    conn.commit()
+    conn.close()
+    return True

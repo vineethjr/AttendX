@@ -1,37 +1,57 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>AttendX | Attendance Warning</title>
+    <title>AttendX | Attendance Warnings</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
-
 </head>
+
 <body>
 
-<h2>⚠️ Low Attendance Warning List</h2>
+<h2>⚠️ Subject-wise Attendance Status</h2>
 
-<table border="1" cellpadding="8">
+<table class="warning-table">
+
     <tr>
         <th>Roll No</th>
-        <th>Name</th>
-        <th>Overall %</th>
+        <th>Subject</th>
+        <th>Attendance %</th>
+        <th>Status</th>
     </tr>
 
-    {% for s in students %}
-    <tr>
-        <td>{{ s.roll }}</td>
-        <td>{{ s.name }}</td>
-        <td>{{ s.percent }}%</td>
+    {% for s in subject_warnings %}
+    <tr style="color: {% if s.status == 'WARNING' %}red{% else %}green{% endif %}">
+        <td>{{ s.roll_no }}</td>
+        <td>{{ s.subject }}</td>
+        <td>{{ s.percentage }}%</td>
+        <td>{{ s.status }}</td>
     </tr>
     {% endfor %}
 </table>
-<div class="progress-ring" style="--percent:72">
-    72%
-</div>
 
+<br><br>
+
+<h2>📝 Exam Eligibility Status</h2>
+
+<table class="warning-table">
+
+    <tr>
+        <th>Roll No</th>
+        <th>Overall Attendance %</th>
+        <th>Exam Status</th>
+    </tr>
+
+    {% for e in exam_warnings %}
+    <tr style="color: {% if e.exam_status == 'NOT ELIGIBLE' %}red{% else %}green{% endif %}">
+        <td>{{ e.roll_no }}</td>
+        <td>{{ e.overall_percentage }}%</td>
+        <td>{{ e.exam_status }}</td>
+    </tr>
+    {% endfor %}
+</table>
 
 <br>
-<a href="/dashboard">Back to Dashboard</a>
+<a href="/dashboard">⬅ Back to Dashboard</a>
 
 </body>
 </html>

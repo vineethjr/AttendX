@@ -168,29 +168,21 @@ def display_message():
 
     return render_template("display_message.html", message=message)
 
-from logic.calculate_attendance import overall_attendance
+from logic.attendance_summary import get_attendance_summary
 
 @app.route("/warnings")
 def warnings():
     if "admin" not in session:
         return redirect(url_for("login"))
 
-    conn = get_db_connection()
-    students = conn.execute("SELECT * FROM Student").fetchall()
-    conn.close()
+    subject_warnings, exam_warnings = get_attendance_summary()
 
-    warning_list = []
+    return render_template(
+        "warning.html",
+        subject_warnings=subject_warnings,
+        exam_warnings=exam_warnings
+    )
 
-    for s in students:
-        percent = overall_attendance(s["student_id"])
-        if percent < 75:
-            warning_list.append({
-                "roll": s["roll_no"],
-                "name": s["name"],
-                "percent": percent
-            })
-
-    return render_template("warning.html", students=warning_list)
 
 from flask import send_file
 from logic.export_excel import export_attendance_excel

@@ -465,3 +465,20 @@ body.dark .progress-ring {
     background: #fee2e2;
     color: #991b1b;
 }
+.warning-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.warning-table th,
+.warning-table td {
+    border: 1px solid #888;
+    padding: 8px;
+    text-align: center;
+}
+
+.warning-table th {
+    background-color: #222;
+    color: #fff;
+}
