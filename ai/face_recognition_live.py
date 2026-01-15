@@ -12,7 +12,7 @@ from logic.mark_attendance import mark_scan
 # Optional: hide harmless warnings
 warnings.filterwarnings("ignore", category=UserWarning)
 
-KNOWN_FACES_DIR = "data/students"
+KNOWN_FACES_DIR = "../data/students"
 
 known_encodings = []
 known_names = []
