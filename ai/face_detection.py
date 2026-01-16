@@ -1,11 +1,17 @@
 import cv2
+import os
 
-# Load Haar Cascade for face detection
-face_cascade = cv2.CascadeClassifier(
-    "haarcascade_frontalface_default.xml"
-)
+# Load Haar Cascade from local file
+cascade_path = "haarcascade_frontalface_default.xml"
 
-cap = cv2.VideoCapture(1)  # change to 0/1/2 if needed
+face_cascade = cv2.CascadeClassifier(cascade_path)
+
+if face_cascade.empty():
+    print("Error: Failed to load Haar cascade classifier.")
+    exit(1)
+
+# Open webcam (try 0 first)
+cap = cv2.VideoCapture(0)
 
 while True:
     ret, frame = cap.read()

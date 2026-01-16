@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 import sqlite3
+import subprocess
 
 app = Flask(__name__)
 app.secret_key = "attendx_secret_key"
@@ -211,9 +212,23 @@ def face_register():
     if request.method == "POST":
         roll = request.form["roll"]
 
+        # Get student name from DB
+        conn = get_db_connection()
+        student = conn.execute("SELECT name FROM Student WHERE roll_no = ?", (roll,)).fetchone()
+        conn.close()
+
+        if not student:
+            return render_template(
+                "face_register.html",
+                students=students,
+                msg="Student not found"
+            )
+
+        name = student[0]
+
         # Run face capture script
         subprocess.run(
-            ["python", "ai/register_student.py", roll]
+            ["python", "ai/register_student.py", name, roll]
         )
 
         return render_template(
