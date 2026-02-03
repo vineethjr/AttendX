@@ -23,11 +23,24 @@ print("Student table created.")
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS Subject (
     subject_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    subject_name TEXT NOT NULL
+    subject_name TEXT NOT NULL,
+    total_classes INTEGER NOT NULL DEFAULT 0
 )
 ''')
 
 print("Subject table created.")
+
+# Face encoding table (one encoding per student)
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS StudentFace (
+    student_id INTEGER PRIMARY KEY,
+    encoding BLOB NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (student_id) REFERENCES Student(student_id)
+)
+''')
+
+print("StudentFace table created.")
 
 
 # Step 6: Create Attendance table
@@ -40,6 +53,7 @@ CREATE TABLE IF NOT EXISTS Attendance (
     date TEXT NOT NULL,
     scan_no INTEGER NOT NULL CHECK (scan_no BETWEEN 1 AND 4),
     status INTEGER NOT NULL CHECK (status IN (0, 1)),
+    schedule_id INTEGER,
     FOREIGN KEY (student_id) REFERENCES Student(student_id),
     FOREIGN KEY (subject_id) REFERENCES Subject(subject_id),
     UNIQUE(student_id, subject_id, date, scan_no)
@@ -47,6 +61,13 @@ CREATE TABLE IF NOT EXISTS Attendance (
 ''')
 
 print("Attendance table created.")
+
+cursor.execute('''
+CREATE UNIQUE INDEX IF NOT EXISTS idx_attendance_schedule
+ON Attendance(student_id, schedule_id, date)
+''')
+
+print("Attendance schedule index created.")
 
 # Class Schedule table
 cursor.execute('''
