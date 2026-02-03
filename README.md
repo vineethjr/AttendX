@@ -115,6 +115,22 @@ AttendX/
 - `POST /face-register/capture` - Face capture endpoint
 - `POST /recognize` - Live recognition endpoint
 
+### JSON API (for Vercel frontend)
+
+- `POST /api/login`
+- `POST /api/logout`
+- `GET /api/students`
+- `POST /api/students`
+- `GET /api/schedule`
+- `POST /api/schedule`
+- `POST /api/face-register/capture`
+- `POST /api/recognize`
+- `GET /api/warnings`
+- `POST /api/messages`
+- `GET /api/reports/export`
+
+See `INTEGRATION.md` for CORS and cookie configuration.
+
 ## Testing
 
 Run the test suite:

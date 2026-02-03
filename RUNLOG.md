@@ -59,3 +59,12 @@ Date: 2026-02-03
 - The original `/schedule` TypeError could not be reproduced during this session because the SQLite DB was locked by multiple running `app.py` processes.
 - The root cause was identified in code as indexing the result of `fetchone()` without a `None` check after an ignored `INSERT` into `Subject` (due to `total_classes` NOT NULL).
 - Pre-fix stack frame (from code path and screenshot): `app.py` `schedule()` line with `subject_id = cursor.execute(...).fetchone()["subject_id"]`.
+
+## Integration Update (2026-02-03)
+
+Commands:
+
+1. `Get-ChildItem -Force` (in `d:\Attendx`)
+2. `Get-ChildItem -Force` (in `d:\Attendx\AttendX`)
+3. `rg -n "CORS|flask_cors|session" app.py -S`
+4. `Get-Content README.md`
