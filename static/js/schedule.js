@@ -57,10 +57,16 @@
                     schedule_id: activeScheduleId
                 })
             });
-            const payload = await response.json().catch(() => ({}));
+            let payload = {};
+            let text = "";
+            try {
+                payload = await response.json();
+            } catch (parseErr) {
+                text = await response.text();
+            }
 
             if (!response.ok) {
-                setStatus(payload.message || "Recognition failed.", "danger");
+                setStatus(payload.message || text || "Recognition failed.", "danger");
                 return;
             }
 
@@ -89,11 +95,17 @@
         recognizedSet.clear();
         listEl.innerHTML = "";
         setStatus("Starting camera...", "secondary");
+        modal.show();
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            setStatus("Camera API not available. Use HTTPS or localhost.", "danger");
+            return;
+        }
 
         try {
             stream = await navigator.mediaDevices.getUserMedia({ video: true });
             video.srcObject = stream;
-            modal.show();
+            await video.play();
             setStatus("Recognition running...", "secondary");
             captureTimer = setInterval(captureAndSend, 2000);
         } catch (err) {

@@ -11,16 +11,24 @@
 
     let stream = null;
 
+    captureBtn.disabled = true;
+
     const setStatus = (message, level = "secondary") => {
         statusEl.textContent = message;
         statusEl.className = `alert alert-${level}`;
     };
 
     const startCamera = async () => {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            setStatus("Camera API not available. Use HTTPS or localhost.", "danger");
+            return;
+        }
         try {
             stream = await navigator.mediaDevices.getUserMedia({ video: true });
             video.srcObject = stream;
-            setStatus("Camera started.", "success");
+            await video.play();
+            captureBtn.disabled = false;
+            setStatus("Camera started. Ready to capture.", "success");
         } catch (err) {
             setStatus("Unable to access the camera.", "danger");
         }
@@ -47,25 +55,31 @@
         const dataUrl = canvas.toDataURL("image/jpeg");
 
         try {
-            const response = await fetch("/face-register/capture", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    image: dataUrl,
-                    student_id: studentId
-                })
-            });
-            const payload = await response.json().catch(() => ({}));
-
-            if (!response.ok) {
-                setStatus(payload.message || "Registration failed.", "danger");
-                return;
-            }
-
-            setStatus("Face registered successfully.", "success");
-        } catch (err) {
-            setStatus("Network error while registering.", "danger");
+        const response = await fetch("/face-register/capture", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                image: dataUrl,
+                student_id: studentId
+            })
+        });
+        let payload = {};
+        let text = "";
+        try {
+            payload = await response.json();
+        } catch (parseErr) {
+            text = await response.text();
         }
+
+        if (!response.ok) {
+            setStatus(payload.message || text || "Registration failed.", "danger");
+            return;
+        }
+
+        setStatus(payload.message || "Face registered successfully.", "success");
+    } catch (err) {
+        setStatus("Network error while registering.", "danger");
+    }
     };
 
     startBtn.addEventListener("click", startCamera);

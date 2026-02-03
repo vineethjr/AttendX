@@ -45,7 +45,7 @@ DAY_NAMES = [
 
 
 def get_db_connection():
-    conn = sqlite3.connect("db/attendance.db")
+    conn = sqlite3.connect("db/attendance.db", timeout=10)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -102,15 +102,19 @@ def load_face_cache(force=False):
     if not force and FACE_CACHE["items"] and (now - FACE_CACHE["loaded_at"]) < FACE_CACHE_TTL_SECONDS:
         return FACE_CACHE["items"]
 
-    conn = get_db_connection()
-    rows = conn.execute(
-        """
-        SELECT sf.student_id, s.roll_no, s.name, sf.encoding
-        FROM StudentFace sf
-        JOIN Student s ON s.student_id = sf.student_id
-        """
-    ).fetchall()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        rows = conn.execute(
+            """
+            SELECT sf.student_id, s.roll_no, s.name, sf.encoding
+            FROM StudentFace sf
+            JOIN Student s ON s.student_id = sf.student_id
+            """
+        ).fetchall()
+        conn.close()
+    except sqlite3.OperationalError as exc:
+        logger.warning("Failed to load face cache: %s", exc)
+        return FACE_CACHE["items"]
 
     items = []
     for row in rows:
@@ -473,14 +477,21 @@ def face_register_capture():
         return jsonify({"status": "error", "message": "No face detected."}), 400
 
     encoding = encodings[0]
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT OR REPLACE INTO StudentFace (student_id, encoding) VALUES (?, ?)",
-        (student_id, sqlite3.Binary(encoding.tobytes())),
-    )
-    conn.commit()
-    conn.close()
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT OR REPLACE INTO StudentFace (student_id, encoding) VALUES (?, ?)",
+            (student_id, sqlite3.Binary(encoding.tobytes())),
+        )
+        conn.commit()
+    except sqlite3.OperationalError as exc:
+        logger.error("Face registration DB error: %s", exc)
+        return jsonify({"status": "error", "message": "Database is locked. Try again."}), 500
+    finally:
+        if conn:
+            conn.close()
 
     load_face_cache(force=True)
     logger.info("Face registered for student_id=%s", student_id)
@@ -536,34 +547,39 @@ def recognize():
             {"status": "error", "message": "No registered faces available."}
         ), 400
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    schedule = cursor.execute(
-        """
-        SELECT schedule_id, subject_id, day, is_free_period
-        FROM ClassSchedule
-        WHERE schedule_id = ?
-        """,
-        (schedule_id,),
-    ).fetchone()
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        schedule = cursor.execute(
+            """
+            SELECT schedule_id, subject_id, day, is_free_period
+            FROM ClassSchedule
+            WHERE schedule_id = ?
+            """,
+            (schedule_id,),
+        ).fetchone()
 
-    if not schedule:
-        conn.close()
-        return jsonify({"status": "error", "message": "Schedule not found."}), 404
+        if not schedule:
+            return jsonify({"status": "error", "message": "Schedule not found."}), 404
 
-    if schedule["is_free_period"]:
-        conn.close()
-        return jsonify(
-            {
-                "status": "ok",
-                "recognized": [],
-                "message": "Free period. Attendance not recorded.",
-            }
-        ), 200
+        if schedule["is_free_period"]:
+            return jsonify(
+                {
+                    "status": "ok",
+                    "recognized": [],
+                    "message": "Free period. Attendance not recorded.",
+                }
+            ), 200
 
-    scan_no = compute_scan_no(schedule_id, schedule["day"], cursor)
-    subject_id = schedule["subject_id"]
-    conn.close()
+        scan_no = compute_scan_no(schedule_id, schedule["day"], cursor)
+        subject_id = schedule["subject_id"]
+    except sqlite3.OperationalError as exc:
+        logger.error("Recognition DB error: %s", exc)
+        return jsonify({"status": "error", "message": "Database is locked. Try again."}), 500
+    finally:
+        if conn:
+            conn.close()
 
     known_encodings = [face["encoding"] for face in known_faces]
     recognized_names = []
