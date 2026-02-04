@@ -8,50 +8,115 @@
         rel="stylesheet"
     >
 </head>
-<body>
+<body class="dashboard-shell">
 
-<header>AttendX - Face Registration</header>
+<div class="shell">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <img src="{{ url_for('static', filename='images/attendx-logo.svg') }}" alt="AttendX">
+        </div>
 
-<div class="container">
-    <div class="card">
-        <h3>Register a Student Face</h3>
+        <div class="sidebar-section">
+            <div class="sidebar-title">Menu</div>
+            <a class="nav-item" href="/dashboard">
+                <span class="nav-icon"></span>
+                Dashboard
+            </a>
+            <a class="nav-item" href="/register-student">
+                <span class="nav-icon"></span>
+                Add Student
+            </a>
+            <a class="nav-item" href="/students">
+                <span class="nav-icon"></span>
+                View Students
+            </a>
+            <a class="nav-item" href="/schedule">
+                <span class="nav-icon"></span>
+                Schedule
+            </a>
+            <a class="nav-item" href="/warnings">
+                <span class="nav-icon"></span>
+                Attendance Warnings
+            </a>
+            <a class="nav-item" href="/export-excel">
+                <span class="nav-icon"></span>
+                Export Reports
+            </a>
+        </div>
 
-        <div class="row g-4 mt-1">
-            <div class="col-md-5">
-                <label class="form-label">Select Student</label>
-                <select id="studentSelect" class="form-select" required>
-                    {% for s in students %}
-                    <option value="{{ s.student_id }}">
-                        {{ s.roll_no }} - {{ s.name }}
-                    </option>
-                    {% endfor %}
-                </select>
+        <div class="sidebar-section">
+            <div class="sidebar-title">General</div>
+            <a class="nav-item" href="/send-message">
+                <span class="nav-icon"></span>
+                Send Message
+            </a>
+            <a class="nav-item active" href="/face-register">
+                <span class="nav-icon"></span>
+                Face Register
+            </a>
+            <a class="nav-item" href="/display-message">
+                <span class="nav-icon"></span>
+                Classroom Display
+            </a>
+            <a class="nav-item" href="/logout">
+                <span class="nav-icon"></span>
+                Logout
+            </a>
+        </div>
+    </aside>
 
-                <div class="d-grid gap-2 mt-3">
-                    <button id="startCameraBtn" type="button" class="btn btn-primary">
-                        Start Camera
-                    </button>
-                    <button id="captureBtn" type="button" class="btn btn-success">
-                        Capture and Register
-                    </button>
-                </div>
-
-                <div id="registerStatus" class="alert alert-secondary mt-3">
-                    Camera is idle.
-                </div>
+    <main class="content">
+        <div class="topbar">
+            <div class="breadcrumb">
+                <span>Admin</span>
+                <span class="sep">/</span>
+                <span>Face Registration</span>
             </div>
-
-            <div class="col-md-7">
-                <div class="ratio ratio-4x3">
-                    <video id="registerVideo" autoplay playsinline></video>
-                </div>
+            <div class="top-actions">
+                <a class="pill-btn ghost" href="/students">View Students</a>
+                <a class="pill-btn" href="/dashboard">Dashboard</a>
             </div>
         </div>
 
-        <div class="mt-3">
-            <a href="/dashboard">Back to Dashboard</a>
+        <div class="page-title">
+            <h1>Face Registration</h1>
+            <p>Capture student faces for attendance recognition.</p>
         </div>
-    </div>
+
+        <div class="card">
+            <div class="row g-4 mt-1">
+                <div class="col-md-5">
+                    <label class="form-label">Select Student</label>
+                    <select id="studentSelect" class="form-select" required>
+                        {% for s in students %}
+                        <option value="{{ s.student_id }}">
+                            {{ s.roll_no }} - {{ s.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+
+                    <div class="d-grid gap-2 mt-3">
+                        <button id="startCameraBtn" type="button" class="btn btn-primary">
+                            Start Camera
+                        </button>
+                        <button id="captureBtn" type="button" class="btn btn-success">
+                            Capture and Register
+                        </button>
+                    </div>
+
+                    <div id="registerStatus" class="alert alert-secondary mt-3">
+                        Camera is idle.
+                    </div>
+                </div>
+
+                <div class="col-md-7">
+                    <div class="ratio ratio-4x3">
+                        <video id="registerVideo" autoplay playsinline></video>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
 </div>
 
 <script src="{{ url_for('static', filename='js/ui.js') }}"></script>

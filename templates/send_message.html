@@ -6,21 +6,95 @@
     <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
 
 </head>
-<body>
+<body class="dashboard-shell">
 
-<h2>Send Message to Classroom Screen</h2>
+<div class="shell">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <img src="{{ url_for('static', filename='images/attendx-logo.svg') }}" alt="AttendX">
+        </div>
 
-<form method="POST">
-    <textarea name="message" rows="4" cols="40" required></textarea><br><br>
-    <button type="submit">Send Message</button>
-</form>
+        <div class="sidebar-section">
+            <div class="sidebar-title">Menu</div>
+            <a class="nav-item" href="/dashboard">
+                <span class="nav-icon"></span>
+                Dashboard
+            </a>
+            <a class="nav-item" href="/register-student">
+                <span class="nav-icon"></span>
+                Add Student
+            </a>
+            <a class="nav-item" href="/students">
+                <span class="nav-icon"></span>
+                View Students
+            </a>
+            <a class="nav-item" href="/schedule">
+                <span class="nav-icon"></span>
+                Schedule
+            </a>
+            <a class="nav-item" href="/warnings">
+                <span class="nav-icon"></span>
+                Attendance Warnings
+            </a>
+            <a class="nav-item" href="/export-excel">
+                <span class="nav-icon"></span>
+                Export Reports
+            </a>
+        </div>
 
-{% if msg %}
-<p style="color:green">{{ msg }}</p>
-{% endif %}
+        <div class="sidebar-section">
+            <div class="sidebar-title">General</div>
+            <a class="nav-item active" href="/send-message">
+                <span class="nav-icon"></span>
+                Send Message
+            </a>
+            <a class="nav-item" href="/display-message">
+                <span class="nav-icon"></span>
+                Classroom Display
+            </a>
+            <a class="nav-item" href="/logout">
+                <span class="nav-icon"></span>
+                Logout
+            </a>
+        </div>
+    </aside>
 
-<br>
-<a href="/dashboard">Back to Dashboard</a>
+    <main class="content">
+        <div class="topbar">
+            <div class="breadcrumb">
+                <span>Admin</span>
+                <span class="sep">/</span>
+                <span>Send Message</span>
+            </div>
+            <div class="top-actions">
+                <a class="pill-btn ghost" href="/display-message">View Display</a>
+                <a class="pill-btn" href="/dashboard">Dashboard</a>
+            </div>
+        </div>
+
+        <div class="page-title">
+            <h1>Send Message</h1>
+            <p>Broadcast announcements to the classroom display.</p>
+        </div>
+
+        <div class="card form-card">
+            <form method="POST" class="form-grid">
+                <div class="form-field" style="grid-column: span 2;">
+                    <label for="message">Message</label>
+                    <textarea id="message" name="message" rows="5" placeholder="Type your announcement..." required></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="pill-btn">Send Message</button>
+                    <a href="/display-message" class="pill-btn ghost">Open Display</a>
+                </div>
+            </form>
+
+            {% if msg %}
+            <div class="form-message">{{ msg }}</div>
+            {% endif %}
+        </div>
+    </main>
+</div>
 
 </body>
 </html>

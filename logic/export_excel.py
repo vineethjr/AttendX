@@ -1,5 +1,5 @@
 from openpyxl import Workbook
-import sqlite3
+from db_utils import get_db_connection
 from logic.calculate_attendance import subject_attendance, overall_attendance
 
 def export_attendance_excel(file_path="attendance_report.xlsx"):
@@ -15,8 +15,7 @@ def export_attendance_excel(file_path="attendance_report.xlsx"):
         "Overall Attendance (%)"
     ])
 
-    conn = sqlite3.connect("db/attendance.db")
-    conn.row_factory = sqlite3.Row
+    conn = get_db_connection()
     cursor = conn.cursor()
 
     students = cursor.execute("SELECT * FROM Student").fetchall()
@@ -38,8 +37,7 @@ def export_attendance_excel(file_path="attendance_report.xlsx"):
 
 
 def add_subject_wise_sheets(wb):
-    conn = sqlite3.connect("db/attendance.db")
-    conn.row_factory = sqlite3.Row
+    conn = get_db_connection()
     cursor = conn.cursor()
 
     subjects = cursor.execute("SELECT * FROM Subject").fetchall()

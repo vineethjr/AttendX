@@ -3,24 +3,45 @@
 <head>
     <title>AttendX | Classroom Display</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
-
     <meta http-equiv="refresh" content="5">
-<style>
-body {
-    background-color: #0f172a;
-    color: white;
-    font-family: Arial;
-    text-align: center;
-    padding-top: 120px;
-}
-p {
-    font-size: 40px;
-}
-</style>
+</head>
+<body class="dashboard-shell display-mode">
 
-<h2>📢 Announcement</h2>
-<p>{{ message }}</p>
+<div class="shell">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <img src="{{ url_for('static', filename='images/attendx-logo.svg') }}" alt="AttendX">
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-title">Menu</div>
+            <a class="nav-item" href="/dashboard">
+                <span class="nav-icon"></span>
+                Dashboard
+            </a>
+            <a class="nav-item" href="/send-message">
+                <span class="nav-icon"></span>
+                Send Message
+            </a>
+            <a class="nav-item active" href="/display-message">
+                <span class="nav-icon"></span>
+                Classroom Display
+            </a>
+        </div>
+    </aside>
+
+    <main class="content">
+        <div class="page-title">
+            <h1>Announcement</h1>
+            <p>Auto-refreshing classroom display.</p>
+        </div>
+
+        <div class="card display-card">
+            <div class="display-label">Message</div>
+            <div class="display-message">{{ message }}</div>
+        </div>
+    </main>
+</div>
 
 </body>
 </html>

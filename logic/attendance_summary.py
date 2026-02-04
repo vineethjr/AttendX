@@ -1,7 +1,7 @@
-import sqlite3
+from db_utils import get_db_connection
 
 def get_attendance_summary():
-    conn = sqlite3.connect("db/attendance.db")
+    conn = get_db_connection()
     cursor = conn.cursor()
 
     # Step 1: Get final attendance per subject

@@ -1,22 +1,24 @@
-import sqlite3
+from db_utils import get_db_connection
 
 def subject_attendance(student_id, subject_id):
-    conn = sqlite3.connect("db/attendance.db")
+    conn = get_db_connection()
     cursor = conn.cursor()
 
-    total = cursor.execute(
+    total_row = cursor.execute(
         "SELECT COUNT(DISTINCT date) FROM Attendance WHERE subject_id=?",
         (subject_id,)
-    ).fetchone()[0]
+    ).fetchone()
+    total = total_row[0] if total_row else 0
 
-    present = cursor.execute(
+    present_row = cursor.execute(
         """
         SELECT COUNT(DISTINCT date)
         FROM Attendance
         WHERE subject_id=? AND student_id=? AND status=1
         """,
         (subject_id, student_id)
-    ).fetchone()[0]
+    ).fetchone()
+    present = present_row[0] if present_row else 0
 
     conn.close()
 
@@ -27,10 +29,10 @@ def subject_attendance(student_id, subject_id):
 
 
 def overall_attendance(student_id):
-    conn = sqlite3.connect("db/attendance.db")
+    conn = get_db_connection()
     cursor = conn.cursor()
 
-    total = cursor.execute(
+    total_row = cursor.execute(
         """
         SELECT COUNT(*)
         FROM (
@@ -40,9 +42,10 @@ def overall_attendance(student_id):
         )
         """,
         (student_id,)
-    ).fetchone()[0]
+    ).fetchone()
+    total = total_row[0] if total_row else 0
 
-    present = cursor.execute(
+    present_row = cursor.execute(
         """
         SELECT COUNT(*)
         FROM (
@@ -52,7 +55,8 @@ def overall_attendance(student_id):
         )
         """,
         (student_id,)
-    ).fetchone()[0]
+    ).fetchone()
+    present = present_row[0] if present_row else 0
 
     conn.close()
 

@@ -1,7 +1,7 @@
-import sqlite3
+from db_utils import get_db_connection
 
 def get_final_attendance():
-    conn = sqlite3.connect("db/attendance.db")
+    conn = get_db_connection()
     cursor = conn.cursor()
 
     cursor.execute("""

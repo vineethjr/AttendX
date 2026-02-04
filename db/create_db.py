@@ -1,11 +1,16 @@
-import sqlite3
+import os
+import sys
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from db_utils import get_db_connection
 
 # Step 3: Create SQLite database file
 # This connects to 'attendance.db' in the db folder. If the file doesn't exist, SQLite creates it.
-conn = sqlite3.connect('db/attendance.db')
+conn = get_db_connection()
 cursor = conn.cursor()
 
-print("SQLite database file created at db/attendance.db")
+print("SQLite database file created.")
 
 # Step 4: Create Student table
 cursor.execute('''

@@ -60,7 +60,22 @@ AttendX is a comprehensive attendance management system that uses facial recogni
 
 6. **Access the application**
    - Open your browser and go to `http://127.0.0.1:5000`
-   - Default login: admin/admin
+   - Default login: admin/admin123
+
+## Frontend Integration
+
+AttendX supports a separate frontend that communicates via JSON and uses session cookies.
+
+Set these environment variables for local development:
+
+```
+ATTENDX_CORS_ORIGINS=http://localhost:5173
+SESSION_COOKIE_SECURE=false
+SESSION_COOKIE_SAMESITE=None
+```
+
+For production, set `ATTENDX_CORS_ORIGINS` to your hosted frontend URL and keep
+`SESSION_COOKIE_SECURE=true`.
 
 ## Usage
 
@@ -109,8 +124,14 @@ AttendX/
 - `GET /dashboard` - Admin dashboard
 - `GET/POST /register-student` - Student registration
 - `GET /students` - View registered students
+- `POST /students` - Create student (JSON)
 - `GET /reports` - Attendance reports
 - `GET /schedule` - Schedule management + live recognition
+- `GET /schedule/today` - Today's schedule (JSON)
+- `POST /messages` - Send message (JSON)
+- `GET /warnings` - Warnings (JSON when Accept header includes application/json)
+- `GET /reports/export` - Export Excel report
+- `POST /attendance` - Record attendance for recognized students (JSON)
 - `GET /face-register` - In-browser face registration
 - `POST /face-register/capture` - Face capture endpoint
 - `POST /recognize` - Live recognition endpoint
@@ -119,6 +140,7 @@ AttendX/
 
 - `POST /api/login`
 - `POST /api/logout`
+- `GET /api/session`
 - `GET /api/students`
 - `POST /api/students`
 - `GET /api/schedule`

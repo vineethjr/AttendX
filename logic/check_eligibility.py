@@ -1,4 +1,4 @@
-import sqlite3
+from db_utils import get_db_connection
 
 def check_attendance_eligibility(student_id, subject_id):
     """
@@ -7,7 +7,7 @@ def check_attendance_eligibility(student_id, subject_id):
     If < 75%, output "LOW ATTENDANCE"
     Else, output "ELIGIBLE"
     """
-    conn = sqlite3.connect('db/attendance.db')
+    conn = get_db_connection()
     cursor = conn.cursor()
 
     # Get total_classes
@@ -20,7 +20,8 @@ def check_attendance_eligibility(student_id, subject_id):
 
     # Get classes_attended
     cursor.execute('SELECT COUNT(*) FROM Attendance WHERE student_id = ? AND subject_id = ? AND status = 1', (student_id, subject_id))
-    classes_attended = cursor.fetchone()[0]
+    classes_row = cursor.fetchone()
+    classes_attended = classes_row[0] if classes_row else 0
 
     percentage = (classes_attended / total_classes) * 100 if total_classes > 0 else 0
 

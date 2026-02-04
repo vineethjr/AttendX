@@ -1,6 +1,11 @@
-import sqlite3
+import os
+import sys
 
-conn = sqlite3.connect('db/attendance.db')
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from db_utils import get_db_connection
+
+conn = get_db_connection()
 cursor = conn.cursor()
 
 # Insert sample students

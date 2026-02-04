@@ -3,30 +3,49 @@
 <head>
     <title>AttendX | Warning Display</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
-
     <meta http-equiv="refresh" content="10">
 </head>
-<body style="text-align:center; font-size:30px;">
+<body class="dashboard-shell display-mode">
 
-<style>
-body {
-    background-color: #111827;
-    color: #facc15;
-    font-family: Arial;
-    text-align: center;
-    padding-top: 80px;
-}
-p {
-    font-size: 36px;
-}
-</style>
+<div class="shell">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <img src="{{ url_for('static', filename='images/attendx-logo.svg') }}" alt="AttendX">
+        </div>
 
-<h2>⚠️ Attendance Warning</h2>
+        <div class="sidebar-section">
+            <div class="sidebar-title">Menu</div>
+            <a class="nav-item" href="/dashboard">
+                <span class="nav-icon"></span>
+                Dashboard
+            </a>
+            <a class="nav-item active" href="/warnings">
+                <span class="nav-icon"></span>
+                Attendance Warnings
+            </a>
+        </div>
+    </aside>
 
-{% for s in students %}
-<p>{{ s.name }}</p>
-{% endfor %}
+    <main class="content">
+        <div class="page-title">
+            <h1>Attendance Warning</h1>
+            <p>Students currently below attendance threshold.</p>
+        </div>
+
+        <div class="card display-card">
+            <div class="display-label">Students</div>
+            <div class="display-list">
+                {% if students %}
+                    {% for s in students %}
+                    <div class="display-message">{{ s.name }}</div>
+                    {% endfor %}
+                {% else %}
+                    <div class="display-message">No warnings right now</div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+</div>
 
 </body>
 </html>

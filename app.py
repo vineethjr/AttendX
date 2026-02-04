@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 import base64
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import io
 import logging
 import os
@@ -9,18 +9,22 @@ import time
 
 import numpy as np
 from flask_cors import CORS
+from db_utils import get_db_connection
 
 app = Flask(__name__)
 app.secret_key = "attendx_secret_key"
-app.config["SESSION_COOKIE_SAMESITE"] = os.getenv("SESSION_COOKIE_SAMESITE", "None")
-app.config["SESSION_COOKIE_SECURE"] = os.getenv("SESSION_COOKIE_SECURE", "true").lower() == "true"
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = False
+session_cookie_domain = os.getenv("ATTENDX_SESSION_COOKIE_DOMAIN")
+if session_cookie_domain:
+    app.config["SESSION_COOKIE_DOMAIN"] = session_cookie_domain
 
-cors_origins = os.getenv("ATTENDX_CORS_ORIGINS", "https://attendx-future.vercel.app")
-CORS(
-    app,
-    supports_credentials=True,
-    origins=[origin.strip() for origin in cors_origins.split(",") if origin.strip()],
-)
+# cors_origins = os.getenv("ATTENDX_CORS_ORIGINS", "https://attendx-future.vercel.app")
+# CORS(
+#     app,
+#     supports_credentials=True,
+#     origins=[origin.strip() for origin in cors_origins.split(",") if origin.strip()],
+# )
 
 logging.basicConfig(
     level=logging.INFO,
@@ -53,12 +57,6 @@ DAY_NAMES = [
     "Saturday",
     "Sunday",
 ]
-
-
-def get_db_connection():
-    conn = sqlite3.connect("db/attendance.db", timeout=10)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 
 def ensure_schema():
@@ -106,6 +104,13 @@ def require_admin_json():
     if "admin" not in session:
         return json_error("Unauthorized", 401)
     return None
+
+
+def wants_json():
+    if request.is_json:
+        return True
+    accept = request.headers.get("Accept", "")
+    return "application/json" in accept or "json" in accept
 
 
 def decode_image_data_url(data_url):
@@ -268,11 +273,204 @@ def api_logout():
     return jsonify({"status": "ok"})
 
 
+@app.route("/api/session", methods=["GET"])
+def api_session():
+    return jsonify({"status": "ok", "authenticated": "admin" in session})
+
+
 @app.route("/dashboard")
 def dashboard():
     if "admin" not in session:
         return redirect(url_for("login"))
-    return render_template("dashboard.html")
+
+    metrics = {
+        "total_students": 0,
+        "active_classes": 0,
+        "running_now": 0,
+        "attendance_rate": 0,
+        "warnings": 0,
+    }
+    attendance_trend = []
+    donut = {
+        "present": 0,
+        "late": 0,
+        "absent": 0,
+        "center_value": "0%",
+        "center_label": "No data",
+        "empty": True,
+    }
+    upcoming_classes = []
+    alerts = []
+
+    conn = None
+    try:
+        today_name = datetime.today().strftime("%A")
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        metrics["total_students"] = cursor.execute(
+            "SELECT COUNT(*) FROM Student"
+        ).fetchone()[0]
+
+        metrics["active_classes"] = cursor.execute(
+            """
+            SELECT COUNT(*)
+            FROM ClassSchedule
+            WHERE day = ? AND is_free_period = 0
+            """,
+            (today_name,),
+        ).fetchone()[0]
+
+        metrics["running_now"] = cursor.execute(
+            """
+            SELECT COUNT(*)
+            FROM ClassSchedule
+            WHERE day = ?
+              AND is_free_period = 0
+              AND time(start_time) <= time('now','localtime')
+              AND time(end_time) >= time('now','localtime')
+            """,
+            (today_name,),
+        ).fetchone()[0]
+
+        upcoming_rows = cursor.execute(
+            """
+            SELECT s.subject_name, cs.start_time, cs.end_time
+            FROM ClassSchedule cs
+            JOIN Subject s ON s.subject_id = cs.subject_id
+            WHERE cs.day = ?
+              AND cs.is_free_period = 0
+              AND time(cs.start_time) >= time('now','localtime')
+            ORDER BY time(cs.start_time) ASC
+            LIMIT 2
+            """,
+            (today_name,),
+        ).fetchall()
+        upcoming_classes = [
+            {
+                "subject": row["subject_name"],
+                "time": f"{row['start_time']} - {row['end_time']}",
+            }
+            for row in upcoming_rows
+        ]
+
+        # Attendance trend for last 7 days (oldest -> newest)
+        trend_dates = [
+            date.today() - timedelta(days=offset)
+            for offset in range(6, -1, -1)
+        ]
+        for d in trend_dates:
+            date_str = d.isoformat()
+            row = cursor.execute(
+                """
+                SELECT
+                    SUM(CASE WHEN total_present >= 3 THEN 1 ELSE 0 END) AS present_count,
+                    COUNT(*) AS total_count
+                FROM (
+                    SELECT student_id, subject_id, date, SUM(status) AS total_present
+                    FROM Attendance
+                    WHERE date = ?
+                    GROUP BY student_id, subject_id, date
+                ) AS daily
+                """,
+                (date_str,),
+            ).fetchone()
+            present_count = row[0] or 0
+            total_count = row[1] or 0
+            percent = round((present_count / total_count) * 100) if total_count else 0
+            attendance_trend.append(
+                {
+                    "label": d.strftime("%a"),
+                    "value": percent,
+                    "muted": total_count == 0,
+                }
+            )
+
+        start_date = (date.today() - timedelta(days=6)).isoformat()
+        mix_row = cursor.execute(
+            """
+            SELECT
+                SUM(CASE WHEN total_present >= 3 THEN 1 ELSE 0 END) AS present_count,
+                SUM(CASE WHEN total_present BETWEEN 1 AND 2 THEN 1 ELSE 0 END) AS late_count,
+                SUM(CASE WHEN total_present = 0 THEN 1 ELSE 0 END) AS absent_count,
+                COUNT(*) AS total_count
+            FROM (
+                SELECT student_id, subject_id, date, SUM(status) AS total_present
+                FROM Attendance
+                WHERE date >= ?
+                GROUP BY student_id, subject_id, date
+            ) AS totals
+            """,
+            (start_date,),
+        ).fetchone()
+
+        present_count = mix_row[0] or 0
+        late_count = mix_row[1] or 0
+        absent_count = mix_row[2] or 0
+        total_count = mix_row[3] or 0
+
+        if total_count:
+            present_pct = round((present_count / total_count) * 100)
+            late_pct = round((late_count / total_count) * 100)
+            absent_pct = max(0, 100 - present_pct - late_pct)
+            donut = {
+                "present": present_pct,
+                "late": late_pct,
+                "absent": absent_pct,
+                "center_value": f"{present_pct}%",
+                "center_label": "Present",
+                "empty": False,
+            }
+            metrics["attendance_rate"] = present_pct
+
+        subject_warnings, exam_warnings = get_attendance_summary()
+        metrics["warnings"] = sum(
+            1 for warning in exam_warnings if warning["exam_status"] == "NOT ELIGIBLE"
+        )
+
+        warning_by_subject = {}
+        for warning in subject_warnings:
+            if warning["status"] != "WARNING":
+                continue
+            subject = warning["subject"]
+            warning_by_subject[subject] = warning_by_subject.get(subject, 0) + 1
+
+        alerts = [
+            {
+                "title": f"{subject} / {count} students",
+                "subtitle": "Below 75% attendance",
+                "status": "Action",
+                "tone": "danger",
+            }
+            for subject, count in sorted(
+                warning_by_subject.items(), key=lambda item: item[1], reverse=True
+            )[:2]
+        ]
+
+    except sqlite3.OperationalError as exc:
+        logger.warning("Dashboard metrics failed: %s", exc)
+    finally:
+        if conn:
+            conn.close()
+
+    if not attendance_trend:
+        fallback_dates = [
+            date.today() - timedelta(days=offset)
+            for offset in range(6, -1, -1)
+        ]
+        attendance_trend = [
+            {"label": d.strftime("%a"), "value": 0, "muted": True}
+            for d in fallback_dates
+        ]
+
+    return render_template(
+        "dashboard.html",
+        metrics=metrics,
+        attendance_trend=attendance_trend,
+        donut=donut,
+        upcoming_classes=upcoming_classes,
+        alerts=alerts,
+    )
 
 @app.route("/register-student", methods=["GET", "POST"])
 def register_student():
@@ -309,8 +507,14 @@ def register_student():
 
     return render_template("register_student.html")
 
-@app.route("/students")
+@app.route("/students", methods=["GET", "POST"])
 def view_students():
+    if request.method == "POST":
+        return api_create_student()
+
+    if wants_json():
+        return api_students()
+
     if "admin" not in session:
         return redirect(url_for("login"))
 
@@ -398,6 +602,12 @@ def logout():
 
 @app.route("/schedule", methods=["GET", "POST"])
 def schedule():
+    if request.method == "POST" and request.is_json:
+        return api_create_schedule()
+
+    if request.method == "GET" and wants_json():
+        return api_schedule()
+
     if "admin" not in session:
         return redirect(url_for("login"))
 
@@ -481,6 +691,17 @@ def api_schedule():
     day = request.args.get("day") or datetime.today().strftime("%A")
     if day not in DAY_NAMES:
         day = datetime.today().strftime("%A")
+    schedules = fetch_schedule_for_day(day)
+    return jsonify({"status": "ok", "day": day, "schedules": schedules})
+
+
+@app.route("/schedule/today", methods=["GET"])
+def api_schedule_today():
+    auth_error = require_admin_json()
+    if auth_error:
+        return auth_error
+
+    day = datetime.today().strftime("%A")
     schedules = fetch_schedule_for_day(day)
     return jsonify({"status": "ok", "day": day, "schedules": schedules})
 
@@ -587,6 +808,11 @@ def api_send_message():
     return jsonify({"status": "ok"})
 
 
+@app.route("/messages", methods=["POST"])
+def messages_json():
+    return api_send_message()
+
+
 @app.route("/display-message")
 def display_message():
     conn = get_db_connection()
@@ -603,6 +829,9 @@ from logic.attendance_summary import get_attendance_summary
 
 @app.route("/warnings")
 def warnings():
+    if wants_json():
+        return api_warnings()
+
     if "admin" not in session:
         return redirect(url_for("login"))
 
@@ -654,6 +883,11 @@ def api_export_excel():
     file_name = "attendance_report.xlsx"
     export_attendance_excel(file_name)
     return send_file(file_name, as_attachment=True)
+
+
+@app.route("/reports/export")
+def reports_export_excel():
+    return api_export_excel()
 
 @app.route("/face-register", methods=["GET"])
 def face_register():
@@ -849,6 +1083,70 @@ def recognize():
 @app.route("/api/recognize", methods=["POST"])
 def api_recognize():
     return recognize()
+
+
+@app.route("/attendance", methods=["POST"])
+def api_attendance():
+    auth_error = require_admin_json()
+    if auth_error:
+        return auth_error
+
+    payload = request.get_json(silent=True) or {}
+    schedule_id = payload.get("schedule_id")
+    student_ids = payload.get("student_ids") or []
+
+    if not student_ids and payload.get("student_id") is not None:
+        student_ids = [payload.get("student_id")]
+
+    try:
+        schedule_id = int(schedule_id)
+        student_ids = [int(sid) for sid in student_ids]
+    except (TypeError, ValueError):
+        return json_error("Invalid schedule or student selection.", 400)
+
+    if not student_ids:
+        return json_error("No students provided.", 400)
+
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        schedule = cursor.execute(
+            """
+            SELECT schedule_id, subject_id, day, is_free_period
+            FROM ClassSchedule
+            WHERE schedule_id = ?
+            """,
+            (schedule_id,),
+        ).fetchone()
+
+        if not schedule:
+            return json_error("Schedule not found.", 404)
+
+        if schedule["is_free_period"]:
+            return jsonify(
+                {
+                    "status": "ok",
+                    "inserted": [],
+                    "message": "Free period. Attendance not recorded.",
+                }
+            )
+
+        scan_no = compute_scan_no(schedule_id, schedule["day"], cursor)
+        subject_id = schedule["subject_id"]
+    except sqlite3.OperationalError as exc:
+        logger.error("Attendance DB error: %s", exc)
+        return json_error("Database is locked. Try again.", 500)
+    finally:
+        if conn:
+            conn.close()
+
+    inserted = []
+    for student_id in student_ids:
+        if mark_schedule_attendance(student_id, subject_id, schedule_id, scan_no):
+            inserted.append(student_id)
+
+    return jsonify({"status": "ok", "inserted": inserted})
 
 if __name__ == "__main__":
     app.run(debug=True)

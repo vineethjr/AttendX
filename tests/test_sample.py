@@ -1,7 +1,12 @@
-import sqlite3
+import os
+import sys
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from db_utils import get_db_connection
 
 def calculate_attendance_percentage(student_id, subject_id):
-    conn = sqlite3.connect('db/attendance.db')
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('SELECT total_classes FROM Subject WHERE subject_id = ?', (subject_id,))
     total_classes = cursor.fetchone()[0]

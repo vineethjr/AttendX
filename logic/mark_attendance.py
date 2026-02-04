@@ -1,10 +1,11 @@
 import sqlite3
 from datetime import date
+from db_utils import get_db_connection
 
 def mark_scan(roll_no, subject_name, scan_no, status):
     today = date.today().isoformat()
 
-    conn = sqlite3.connect("db/attendance.db")
+    conn = get_db_connection()
     cursor = conn.cursor()
 
     # Get student_id

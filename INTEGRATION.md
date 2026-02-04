@@ -18,7 +18,7 @@ If you need local testing, set:
 
 ```
 SESSION_COOKIE_SECURE=false
-ATTENDX_CORS_ORIGINS=http://localhost:3000
+ATTENDX_CORS_ORIGINS=http://localhost:5173
 ```
 
 ## API Endpoints
@@ -26,6 +26,7 @@ ATTENDX_CORS_ORIGINS=http://localhost:3000
 ### Auth
 - `POST /api/login` → `{ username, password }`
 - `POST /api/logout`
+- `GET /api/session`
 
 ### Students
 - `GET /api/students`
@@ -34,6 +35,7 @@ ATTENDX_CORS_ORIGINS=http://localhost:3000
 ### Schedule
 - `GET /api/schedule?day=Tuesday`
 - `POST /api/schedule` → `{ subject_name, day, start_time, end_time, is_free_period }`
+- `GET /schedule/today`
 
 ### Face Registration
 - `POST /api/face-register/capture` → `{ student_id, image }`
@@ -46,9 +48,11 @@ ATTENDX_CORS_ORIGINS=http://localhost:3000
 
 ### Messages
 - `POST /api/messages` → `{ content }`
+- `POST /messages` -> `{ content }`
 
 ### Reports
 - `GET /api/reports/export` → downloads Excel file
+- `GET /reports/export` -> downloads Excel file
 
 ## Vercel Link-Only Wiring (No Layout Changes)
 

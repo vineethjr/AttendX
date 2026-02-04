@@ -4,94 +4,236 @@
     <title>AttendX | Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="icon" href="{{ url_for('static', filename='images/favicon.svg') }}">
-
-    <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
-
 </head>
-<body>
+<body class="dashboard-shell">
 
-<!-- HEADER -->
-<div class="dashboard-header">
-    <div class="theme-toggle" onclick="toggleTheme()">🌙 / ☀️</div>
+<div class="shell">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <img src="{{ url_for('static', filename='images/attendx-logo.svg') }}" alt="AttendX">
+        </div>
 
-<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+        <div class="sidebar-section">
+            <div class="sidebar-title">Menu</div>
+            <a class="nav-item active" href="/dashboard">
+                <span class="nav-icon"></span>
+                Dashboard
+            </a>
+            <a class="nav-item" href="/register-student">
+                <span class="nav-icon"></span>
+                Add Student
+            </a>
+            <a class="nav-item" href="/students">
+                <span class="nav-icon"></span>
+                View Students
+            </a>
+            <a class="nav-item" href="/schedule">
+                <span class="nav-icon"></span>
+                Schedule
+            </a>
+            <a class="nav-item" href="/warnings">
+                <span class="nav-icon"></span>
+                Attendance Warnings
+            </a>
+            <a class="nav-item" href="/export-excel">
+                <span class="nav-icon"></span>
+                Export Reports
+            </a>
+        </div>
 
-    <img src="{{ url_for('static', filename='images/attendx-logo.svg') }}">
-    <div class="right">
-        Smart Attendance • Admin Panel
-    </div>
+        <div class="sidebar-section">
+            <div class="sidebar-title">General</div>
+            <a class="nav-item" href="/send-message">
+                <span class="nav-icon"></span>
+                Send Message
+            </a>
+            <a class="nav-item" href="/display-message">
+                <span class="nav-icon"></span>
+                Classroom Display
+            </a>
+            <a class="nav-item" href="/logout">
+                <span class="nav-icon"></span>
+                Logout
+            </a>
+        </div>
+    </aside>
+
+    <main class="content">
+        <div class="topbar">
+            <div class="search">
+                <input type="text" placeholder="Search students, schedules, reports">
+            </div>
+            <div class="top-actions">
+                <a class="pill-btn" href="/register-student">+ Add Student</a>
+                <a class="pill-btn ghost" href="/export-excel">Export Reports</a>
+            </div>
+            <div class="profile">
+                <div class="profile-avatar">A</div>
+                <div>
+                    <div class="profile-name">Admin</div>
+                    <div class="profile-email">admin@attendx.local</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="page-title">
+            <h1>Dashboard</h1>
+            <p>Plan, track, and monitor attendance in real time.</p>
+        </div>
+
+        <section class="stats-grid">
+            <div class="stat-card highlight">
+                <div class="stat-title">Total Students</div>
+                <div class="stat-value" style="color:white">{{ metrics.total_students }}</div>
+                <div class="stat-meta">Total registered students</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Active Classes</div>
+                <div class="stat-value">{{ metrics.active_classes }}</div>
+                <div class="stat-meta">{{ metrics.running_now }} running now</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Attendance Rate</div>
+                <div class="stat-value">{{ metrics.attendance_rate }}%</div>
+                <div class="stat-meta">Based on last 7 days</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Warnings</div>
+                <div class="stat-value">{{ metrics.warnings }}</div>
+                <div class="stat-meta">Below 75% overall</div>
+            </div>
+        </section>
+
+        <section class="grid-two">
+            <div class="card analytics-card">
+                <div class="card-header">
+                    <div>
+                        <h3>Attendance Trends</h3>
+                        <p>Weekly attendance across all departments</p>
+                    </div>
+                    <div class="chip">Last 7 days</div>
+                </div>
+                <div class="bar-chart">
+                    {% for day in attendance_trend %}
+                    <div class="bar-group">
+                        <div class="bar {% if day.muted %}muted{% endif %}" style="--value: {{ day.value }}"></div>
+                        <div class="bar-label">{{ day.label }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="card donut-card">
+                <div class="card-header">
+                    <div>
+                        <h3>Attendance Mix</h3>
+                        <p>Presence breakdown for this week</p>
+                    </div>
+                    <div class="chip">Week 5</div>
+                </div>
+                <div class="donut-wrap">
+                    <div class="donut {% if donut.empty %}empty{% endif %}" style="--p1: {{ donut.present }}; --p2: {{ donut.late }}; --p3: {{ donut.absent }};">
+                        <div class="donut-center">
+                            <div class="donut-value">{{ donut.center_value }}</div>
+                            <div class="donut-label">{{ donut.center_label }}</div>
+                        </div>
+                    </div>
+                    <div class="donut-legend">
+                        <div><span class="dot green"></span> Present</div>
+                        <div><span class="dot amber"></span> Late</div>
+                        <div><span class="dot red"></span> Absent</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="grid-three">
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h3>Upcoming Classes</h3>
+                        <p>Next two classes</p>
+                    </div>
+                    <a class="link-btn" href="/schedule">View schedule</a>
+                </div>
+                <div class="list">
+                    {% if upcoming_classes %}
+                        {% for item in upcoming_classes %}
+                        <div class="list-item">
+                            <div>
+                                <div class="list-title">{{ item.subject }}</div>
+                                <div class="list-sub">{{ item.time }}</div>
+                            </div>
+                            <span class="pill">Upcoming</span>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="list-item">
+                            <div>
+                                <div class="list-title">No upcoming classes</div>
+                                <div class="list-sub">Check schedule for more details</div>
+                            </div>
+                            <span class="pill">Today</span>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h3>Alerts</h3>
+                        <p>Students requiring follow-up</p>
+                    </div>
+                    <a class="link-btn" href="/warnings">View warnings</a>
+                </div>
+                <div class="list">
+                    {% if alerts %}
+                        {% for alert in alerts %}
+                        <div class="list-item">
+                            <div>
+                                <div class="list-title">{{ alert.title }}</div>
+                                <div class="list-sub">{{ alert.subtitle }}</div>
+                            </div>
+                            <span class="pill {% if alert.tone == 'danger' %}danger{% endif %}">{{ alert.status }}</span>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="list-item">
+                            <div>
+                                <div class="list-title">No alerts</div>
+                                <div class="list-sub">Attendance looks healthy</div>
+                            </div>
+                            <span class="pill">All good</span>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h3>Quick Actions</h3>
+                        <p>Common tasks</p>
+                    </div>
+                </div>
+                <div class="quick-grid">
+                    <a href="/register-student" class="quick-btn">Add Student</a>
+                    <a href="/face-register" class="quick-btn">Face Register</a>
+                    <a href="/send-message" class="quick-btn">Send Message</a>
+                    <a href="/export-excel" class="quick-btn">Export Report</a>
+                </div>
+            </div>
+        </section>
+
+        <div class="page-footer">
+            <div>&copy; AttendX &mdash; Power-Efficient Smart Attendance</div>
+            <div class="footer-links">
+                <a href="/logout">Logout</a>
+            </div>
+        </div>
+    </main>
 </div>
-
-<!-- CONTENT -->
-<div class="dashboard-container">
-
-    <div class="feature-grid">
-        <div class="card">
-    <h3>System Overview</h3>
-    <p>📷 Camera Scans: 4 per hour</p>
-    <p>🟢 Active Mode: Smart Attendance</p>
-    <p>⚡ Power Optimized</p>
-</div>
-
-
-        <a href="/register-student" class="feature-card">
-            <div class="feature-icon">👨‍🎓</div>
-            <div class="feature-title">Register Student</div>
-            <div class="feature-desc">
-                Add new students to the system securely
-            </div>
-        </a>
-
-        <a href="/students" class="feature-card">
-            <div class="feature-icon">📋</div>
-            <div class="feature-title">View Students</div>
-            <div class="feature-desc">
-                Browse and manage registered students
-            </div>
-        </a>
-
-        <a href="/schedule" class="feature-card">
-            <div class="feature-icon">📅</div>
-            <div class="feature-title">Class Schedule</div>
-            <div class="feature-desc">
-                Define timetable & free periods
-            </div>
-        </a>
-
-        <a href="/send-message" class="feature-card">
-            <div class="feature-icon">📢</div>
-            <div class="feature-title">Send Message</div>
-            <div class="feature-desc">
-                Broadcast announcements to classroom
-            </div>
-        </a>
-
-        <a href="/warnings" class="feature-card">
-            <div class="feature-icon">⚠️</div>
-            <div class="feature-title">Attendance Warnings</div>
-            <div class="feature-desc">
-                Identify low-attendance students
-            </div>
-        </a>
-
-        <a href="/export-excel" class="feature-card">
-            <div class="feature-icon">📊</div>
-            <div class="feature-title">Export Reports</div>
-            <div class="feature-desc">
-                Download attendance as Excel sheets
-            </div>
-        </a>
-
-    </div>
-
-    <!-- FOOTER -->
-    <div class="dashboard-footer">
-        <div>© AttendX — Power-Efficient Smart Attendance</div>
-        <a href="/logout">Logout</a>
-    </div>
-
-</div>
-
 
 </body>
 </html>

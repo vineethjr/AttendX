@@ -1,4 +1,4 @@
-import sqlite3
+from db_utils import get_db_connection
 
 def calculate_attendance_percentage(student_id, subject_id):
     """
@@ -7,7 +7,7 @@ def calculate_attendance_percentage(student_id, subject_id):
     Where classes_attended = number of times status = 1
     total_classes = Subject.total_classes
     """
-    conn = sqlite3.connect('db/attendance.db')
+    conn = get_db_connection()
     cursor = conn.cursor()
 
     # Get total_classes from Subject table
@@ -25,7 +25,8 @@ def calculate_attendance_percentage(student_id, subject_id):
     SELECT COUNT(*) FROM Attendance
     WHERE student_id = ? AND subject_id = ? AND status = 1
     ''', (student_id, subject_id))
-    classes_attended = cursor.fetchone()[0]
+    classes_row = cursor.fetchone()
+    classes_attended = classes_row[0] if classes_row else 0
 
     if total_classes == 0:
         percentage = 0.0

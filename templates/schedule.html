@@ -8,140 +8,203 @@
         rel="stylesheet"
     >
 </head>
-<body>
+<body class="dashboard-shell">
 
-<header>AttendX - Class Schedule</header>
+<div class="shell">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <img src="{{ url_for('static', filename='images/attendx-logo.svg') }}" alt="AttendX">
+        </div>
 
-<div class="container">
-    <div class="card">
-        <h2>Class Schedule Upload</h2>
+        <div class="sidebar-section">
+            <div class="sidebar-title">Menu</div>
+            <a class="nav-item" href="/dashboard">
+                <span class="nav-icon"></span>
+                Dashboard
+            </a>
+            <a class="nav-item" href="/register-student">
+                <span class="nav-icon"></span>
+                Add Student
+            </a>
+            <a class="nav-item" href="/students">
+                <span class="nav-icon"></span>
+                View Students
+            </a>
+            <a class="nav-item active" href="/schedule">
+                <span class="nav-icon"></span>
+                Schedule
+            </a>
+            <a class="nav-item" href="/warnings">
+                <span class="nav-icon"></span>
+                Attendance Warnings
+            </a>
+            <a class="nav-item" href="/export-excel">
+                <span class="nav-icon"></span>
+                Export Reports
+            </a>
+        </div>
 
-        <form method="POST" class="row g-3">
-            <div class="col-md-6">
-                <label class="form-label">Subject Name</label>
-                <input type="text" name="subject" class="form-control" required>
+        <div class="sidebar-section">
+            <div class="sidebar-title">General</div>
+            <a class="nav-item" href="/send-message">
+                <span class="nav-icon"></span>
+                Send Message
+            </a>
+            <a class="nav-item" href="/display-message">
+                <span class="nav-icon"></span>
+                Classroom Display
+            </a>
+            <a class="nav-item" href="/logout">
+                <span class="nav-icon"></span>
+                Logout
+            </a>
+        </div>
+    </aside>
+
+    <main class="content">
+        <div class="topbar">
+            <div class="breadcrumb">
+                <span>Admin</span>
+                <span class="sep">/</span>
+                <span>Schedule</span>
             </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Day</label>
-                <select name="day" class="form-select">
-                    {% for d in days %}
-                    <option value="{{ d }}" {% if d == day %}selected{% endif %}>
-                        {{ d }}
-                    </option>
-                    {% endfor %}
-                </select>
+            <div class="top-actions">
+                <a class="pill-btn ghost" href="/dashboard">Dashboard</a>
+                <a class="pill-btn" href="/register-student">Add Student</a>
             </div>
+        </div>
 
-            <div class="col-md-6">
-                <label class="form-label">Start Time</label>
-                <input type="time" name="start" class="form-control" required>
-            </div>
+        <div class="page-title">
+            <h1>Class Schedule</h1>
+            <p>Create schedules, manage class timing, and launch attendance.</p>
+        </div>
 
-            <div class="col-md-6">
-                <label class="form-label">End Time</label>
-                <input type="time" name="end" class="form-control" required>
-            </div>
+        <div class="card schedule-card">
+            <h3>Class Schedule Upload</h3>
 
-            <div class="col-12">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="free" id="freePeriod">
-                    <label class="form-check-label" for="freePeriod">Free Period</label>
+            <form method="POST" class="row g-3 mt-2">
+                <div class="col-md-6">
+                    <label class="form-label">Subject Name</label>
+                    <input type="text" name="subject" class="form-control" required>
                 </div>
-            </div>
 
-            <div class="col-12">
-                <button type="submit" class="btn btn-primary">Save Schedule</button>
-            </div>
-        </form>
+                <div class="col-md-6">
+                    <label class="form-label">Day</label>
+                    <select name="day" class="form-select">
+                        {% for d in days %}
+                        <option value="{{ d }}" {% if d == day %}selected{% endif %}>
+                            {{ d }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-        {% if msg %}
-        <div class="alert alert-success mt-3">{{ msg }}</div>
-        {% endif %}
-        {% if error %}
-        <div class="alert alert-danger mt-3">{{ error }}</div>
-        {% endif %}
-    </div>
+                <div class="col-md-6">
+                    <label class="form-label">Start Time</label>
+                    <input type="time" name="start" class="form-control" required>
+                </div>
 
-    <div class="card">
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
-            <h3 class="mb-0">Schedule for {{ day }}</h3>
-            <form method="get" class="d-flex gap-2 align-items-center">
-                <select name="day" class="form-select">
-                    {% for d in days %}
-                    <option value="{{ d }}" {% if d == day %}selected{% endif %}>
-                        {{ d }}
-                    </option>
-                    {% endfor %}
-                </select>
-                <button type="submit" class="btn btn-outline-primary">View</button>
+                <div class="col-md-6">
+                    <label class="form-label">End Time</label>
+                    <input type="time" name="end" class="form-control" required>
+                </div>
+
+                <div class="col-12">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="free" id="freePeriod">
+                        <label class="form-check-label" for="freePeriod">Free Period</label>
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">Save Schedule</button>
+                </div>
             </form>
+
+            {% if msg %}
+            <div class="alert alert-success mt-3">{{ msg }}</div>
+            {% endif %}
+            {% if error %}
+            <div class="alert alert-danger mt-3">{{ error }}</div>
+            {% endif %}
         </div>
 
-        {% if schedules and schedules|length > 0 %}
-        <div class="table-responsive mt-3">
-            <table class="table table-striped align-middle">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Time</th>
-                        <th>Subject</th>
-                        <th>Free</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for s in schedules %}
-                    <tr>
-                        <td>{{ loop.index }}</td>
-                        <td>{{ s.start_time }} - {{ s.end_time }}</td>
-                        <td>{{ s.subject_name }}</td>
-                        <td>{% if s.free_period %}Yes{% else %}No{% endif %}</td>
-                        <td>
-                            <button
-                                type="button"
-                                class="btn btn-sm btn-primary start-camera"
-                                data-schedule-id="{{ s.id }}"
-                            >
-                                Start Camera
-                            </button>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <div class="alert alert-info mt-3">No classes scheduled for {{ day }}.</div>
-        {% endif %}
-    </div>
-
-    <div class="mt-3">
-        <a href="/dashboard">Back to Dashboard</a>
-    </div>
-</div>
-
-<div class="modal fade" id="cameraModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Live Attendance</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <div class="card schedule-card">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <h3 class="mb-0">Schedule for {{ day }}</h3>
+                <form method="get" class="d-flex gap-2 align-items-center">
+                    <select name="day" class="form-select">
+                        {% for d in days %}
+                        <option value="{{ d }}" {% if d == day %}selected{% endif %}>
+                            {{ d }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-outline-primary">View</button>
+                </form>
             </div>
-            <div class="modal-body">
-                <div class="ratio ratio-16x9">
-                    <video id="scheduleVideo" autoplay playsinline></video>
+
+            {% if schedules and schedules|length > 0 %}
+            <div class="table-responsive mt-3">
+                <table class="table table-striped align-middle">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Time</th>
+                            <th>Subject</th>
+                            <th>Free</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in schedules %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>{{ s.start_time }} - {{ s.end_time }}</td>
+                            <td>{{ s.subject_name }}</td>
+                            <td>{% if s.free_period %}Yes{% else %}No{% endif %}</td>
+                            <td>
+                                <button
+                                    type="button"
+                                    class="btn btn-sm btn-primary start-camera"
+                                    data-schedule-id="{{ s.id }}"
+                                >
+                                    Start Camera
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info mt-3">No classes scheduled for {{ day }}.</div>
+            {% endif %}
+        </div>
+
+        <div class="modal fade" id="cameraModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Live Attendance</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="ratio ratio-16x9">
+                            <video id="scheduleVideo" autoplay playsinline></video>
+                        </div>
+                        <div id="recognitionStatus" class="alert alert-secondary mt-3">
+                            Waiting for camera...
+                        </div>
+                        <ul id="recognizedList" class="list-group"></ul>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Stop</button>
+                    </div>
                 </div>
-                <div id="recognitionStatus" class="alert alert-secondary mt-3">
-                    Waiting for camera...
-                </div>
-                <ul id="recognizedList" class="list-group"></ul>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Stop</button>
             </div>
         </div>
-    </div>
+    </main>
 </div>
 
 <script src="{{ url_for('static', filename='js/ui.js') }}"></script>

@@ -6,4 +6,4 @@ numpy==2.2.6
 Pillow==12.1.0
 Flask-WTF==1.2.1
 python-dotenv==1.0.1
-flask-cors==4.0.0
+flask-cors==6.0.2
