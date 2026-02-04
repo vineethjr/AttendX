@@ -1,19 +1,236 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify
+import base64
+from datetime import date, datetime
+import io
+import logging
+import os
 import sqlite3
-import subprocess
+import time
+
+import numpy as np
+from flask_cors import CORS
 
 app = Flask(__name__)
 app.secret_key = "attendx_secret_key"
+app.config["SESSION_COOKIE_SAMESITE"] = os.getenv("SESSION_COOKIE_SAMESITE", "None")
+app.config["SESSION_COOKIE_SECURE"] = os.getenv("SESSION_COOKIE_SECURE", "true").lower() == "true"
+
+cors_origins = os.getenv("ATTENDX_CORS_ORIGINS", "https://attendx-future.vercel.app")
+CORS(
+    app,
+    supports_credentials=True,
+    origins=[origin.strip() for origin in cors_origins.split(",") if origin.strip()],
+)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s"
+)
+logger = logging.getLogger("attendx")
+
+try:
+    import face_recognition  # type: ignore
+    FACE_RECOGNITION_AVAILABLE = True
+except Exception as exc:  # pragma: no cover - environment dependent
+    face_recognition = None
+    FACE_RECOGNITION_AVAILABLE = False
+    logger.warning("face_recognition import failed: %s", exc)
+
+FACE_CACHE = {"loaded_at": 0.0, "items": []}
+FACE_CACHE_TTL_SECONDS = 60
+RECOGNITION_MIN_INTERVAL_SECONDS = 2.0
+LAST_RECOGNITION_BY_IP = {}
 
 # TEMP admin credentials
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "admin123"
+DAY_NAMES = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+]
 
 
 def get_db_connection():
-    conn = sqlite3.connect("db/attendance.db")
+    conn = sqlite3.connect("db/attendance.db", timeout=10)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def ensure_schema():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS StudentFace (
+                student_id INTEGER PRIMARY KEY,
+                encoding BLOB NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (student_id) REFERENCES Student(student_id)
+            )
+            """
+        )
+
+        table = cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='Attendance'"
+        ).fetchone()
+        if table:
+            columns = [row[1] for row in cursor.execute("PRAGMA table_info(Attendance)").fetchall()]
+            if "schedule_id" not in columns:
+                cursor.execute("ALTER TABLE Attendance ADD COLUMN schedule_id INTEGER")
+
+            cursor.execute(
+                """
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_attendance_schedule
+                ON Attendance(student_id, schedule_id, date)
+                """
+            )
+
+        conn.commit()
+        conn.close()
+    except Exception as exc:
+        logger.warning("Schema check failed: %s", exc)
+
+
+def json_error(message, status=400):
+    return jsonify({"status": "error", "message": message}), status
+
+
+def require_admin_json():
+    if "admin" not in session:
+        return json_error("Unauthorized", 401)
+    return None
+
+
+def decode_image_data_url(data_url):
+    if not data_url or "," not in data_url:
+        return None
+    try:
+        _, encoded = data_url.split(",", 1)
+        return base64.b64decode(encoded)
+    except Exception:
+        return None
+
+
+def load_face_cache(force=False):
+    now = time.time()
+    if not force and FACE_CACHE["items"] and (now - FACE_CACHE["loaded_at"]) < FACE_CACHE_TTL_SECONDS:
+        return FACE_CACHE["items"]
+
+    try:
+        conn = get_db_connection()
+        rows = conn.execute(
+            """
+            SELECT sf.student_id, s.roll_no, s.name, sf.encoding
+            FROM StudentFace sf
+            JOIN Student s ON s.student_id = sf.student_id
+            """
+        ).fetchall()
+        conn.close()
+    except sqlite3.OperationalError as exc:
+        logger.warning("Failed to load face cache: %s", exc)
+        return FACE_CACHE["items"]
+
+    items = []
+    for row in rows:
+        if row["encoding"] is None:
+            continue
+        encoding = np.frombuffer(row["encoding"], dtype=np.float64)
+        if encoding.shape[0] != 128:
+            logger.warning("Invalid face encoding length for student_id=%s", row["student_id"])
+            continue
+        items.append(
+            {
+                "student_id": row["student_id"],
+                "roll_no": row["roll_no"],
+                "name": row["name"],
+                "encoding": encoding,
+            }
+        )
+
+    FACE_CACHE["loaded_at"] = now
+    FACE_CACHE["items"] = items
+    return items
+
+
+def fetch_schedule_for_day(day):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT
+            cs.schedule_id,
+            cs.subject_id,
+            s.subject_name,
+            cs.start_time,
+            cs.end_time,
+            cs.is_free_period
+        FROM ClassSchedule cs
+        JOIN Subject s ON cs.subject_id = s.subject_id
+        WHERE cs.day = ?
+        ORDER BY cs.start_time
+        """,
+        (day,),
+    )
+    rows = cursor.fetchall()
+    conn.close()
+
+    schedules = []
+    for row in rows:
+        schedules.append(
+            {
+                "id": row["schedule_id"],
+                "subject_id": row["subject_id"],
+                "subject_name": row["subject_name"],
+                "start_time": row["start_time"],
+                "end_time": row["end_time"],
+                "free_period": bool(row["is_free_period"]),
+            }
+        )
+    return schedules
+
+
+def compute_scan_no(schedule_id, day, cursor):
+    cursor.execute(
+        "SELECT schedule_id FROM ClassSchedule WHERE day = ? ORDER BY start_time",
+        (day,),
+    )
+    schedule_ids = [row["schedule_id"] for row in cursor.fetchall()]
+    scan_no = schedule_ids.index(schedule_id) + 1 if schedule_id in schedule_ids else 1
+    if scan_no > 4:
+        logger.warning("Scan number capped at 4 for schedule_id=%s", schedule_id)
+        scan_no = 4
+    return scan_no
+
+
+def mark_schedule_attendance(student_id, subject_id, schedule_id, scan_no):
+    today = date.today().isoformat()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            """
+            INSERT INTO Attendance
+            (student_id, subject_id, date, scan_no, status, schedule_id)
+            VALUES (?, ?, ?, ?, 1, ?)
+            """,
+            (student_id, subject_id, today, scan_no, schedule_id),
+        )
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
+
+
+ensure_schema()
 
 
 @app.route("/", methods=["GET", "POST"])
@@ -29,6 +246,26 @@ def login():
             return render_template("login.html", error="Invalid credentials")
 
     return render_template("login.html")
+
+
+@app.route("/api/login", methods=["POST"])
+def api_login():
+    data = request.get_json(silent=True) or {}
+    username = (data.get("username") or "").strip()
+    password = (data.get("password") or "").strip()
+
+    if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+        session["admin"] = True
+        return jsonify({"status": "ok"})
+
+    logger.info("API login failed for username=%s", username)
+    return json_error("Invalid credentials", 401)
+
+
+@app.route("/api/logout", methods=["POST"])
+def api_logout():
+    session.pop("admin", None)
+    return jsonify({"status": "ok"})
 
 
 @app.route("/dashboard")
@@ -84,6 +321,74 @@ def view_students():
     return render_template("view_students.html", students=students)
 
 
+@app.route("/api/students", methods=["GET"])
+def api_students():
+    auth_error = require_admin_json()
+    if auth_error:
+        return auth_error
+
+    conn = get_db_connection()
+    rows = conn.execute("SELECT * FROM Student ORDER BY roll_no").fetchall()
+    conn.close()
+
+    students = [
+        {
+            "student_id": row["student_id"],
+            "roll_no": row["roll_no"],
+            "name": row["name"],
+            "department": row["department"],
+            "semester": row["semester"],
+        }
+        for row in rows
+    ]
+
+    return jsonify({"status": "ok", "students": students})
+
+
+@app.route("/api/students", methods=["POST"])
+def api_create_student():
+    auth_error = require_admin_json()
+    if auth_error:
+        return auth_error
+
+    data = request.get_json(silent=True) or {}
+    roll = (data.get("roll_no") or "").strip()
+    name = (data.get("name") or "").strip()
+    dept = (data.get("department") or "").strip()
+    sem = (data.get("semester") or "").strip()
+
+    if not roll or not name:
+        return json_error("Roll number and name are required.", 400)
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO Student (roll_no, name, department, semester)
+            VALUES (?, ?, ?, ?)
+            """,
+            (roll, name, dept, sem),
+        )
+        student_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return jsonify(
+            {
+                "status": "ok",
+                "student": {
+                    "student_id": student_id,
+                    "roll_no": roll,
+                    "name": name,
+                    "department": dept,
+                    "semester": sem,
+                },
+            }
+        )
+    except sqlite3.IntegrityError:
+        return json_error("Roll number already exists.", 409)
+
+
 
 @app.route("/logout")
 def logout():
@@ -97,24 +402,47 @@ def schedule():
         return redirect(url_for("login"))
 
     if request.method == "POST":
-        subject_name = request.form["subject"]
-        day = request.form["day"]
-        start = request.form["start"]
-        end = request.form["end"]
-        is_free = 1 if "free" in request.form else 0
+        subject_name = (request.form.get("subject") or "").strip()
+        day = request.form.get("day") or datetime.today().strftime("%A")
+        start = request.form.get("start")
+        end = request.form.get("end")
+        is_free = 1 if request.form.get("free") else 0
+
+        if not subject_name or not start or not end:
+            schedules = fetch_schedule_for_day(day)
+            return render_template(
+                "schedule.html",
+                day=day,
+                days=DAY_NAMES,
+                schedules=schedules,
+                error="All fields are required to save a schedule.",
+            )
 
         conn = get_db_connection()
         cursor = conn.cursor()
 
         cursor.execute(
-            "INSERT OR IGNORE INTO Subject (subject_name) VALUES (?)",
-            (subject_name,)
+            "INSERT OR IGNORE INTO Subject (subject_name, total_classes) VALUES (?, 0)",
+            (subject_name,),
         )
 
-        subject_id = cursor.execute(
+        row = cursor.execute(
             "SELECT subject_id FROM Subject WHERE subject_name = ?",
             (subject_name,)
-        ).fetchone()["subject_id"]
+        ).fetchone()
+
+        if not row:
+            conn.close()
+            schedules = fetch_schedule_for_day(day)
+            return render_template(
+                "schedule.html",
+                day=day,
+                days=DAY_NAMES,
+                schedules=schedules,
+                error=f"Subject not found: {subject_name}",
+            )
+
+        subject_id = row["subject_id"]
 
         cursor.execute(
             """
@@ -128,9 +456,91 @@ def schedule():
         conn.commit()
         conn.close()
 
-        return render_template("schedule.html", msg="Schedule saved successfully")
+        return redirect(url_for("schedule", day=day, saved=1))
 
-    return render_template("schedule.html")
+    day = request.args.get("day") or datetime.today().strftime("%A")
+    if day not in DAY_NAMES:
+        day = datetime.today().strftime("%A")
+    schedules = fetch_schedule_for_day(day)
+    msg = "Schedule saved successfully" if request.args.get("saved") else None
+    return render_template(
+        "schedule.html",
+        day=day,
+        days=DAY_NAMES,
+        schedules=schedules,
+        msg=msg,
+    )
+
+
+@app.route("/api/schedule", methods=["GET"])
+def api_schedule():
+    auth_error = require_admin_json()
+    if auth_error:
+        return auth_error
+
+    day = request.args.get("day") or datetime.today().strftime("%A")
+    if day not in DAY_NAMES:
+        day = datetime.today().strftime("%A")
+    schedules = fetch_schedule_for_day(day)
+    return jsonify({"status": "ok", "day": day, "schedules": schedules})
+
+
+@app.route("/api/schedule", methods=["POST"])
+def api_create_schedule():
+    auth_error = require_admin_json()
+    if auth_error:
+        return auth_error
+
+    data = request.get_json(silent=True) or {}
+    subject_name = (data.get("subject_name") or "").strip()
+    day = data.get("day") or datetime.today().strftime("%A")
+    start = data.get("start_time")
+    end = data.get("end_time")
+    is_free = 1 if data.get("is_free_period") else 0
+
+    if not subject_name or not start or not end:
+        return json_error("All fields are required.", 400)
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT OR IGNORE INTO Subject (subject_name, total_classes) VALUES (?, 0)",
+        (subject_name,),
+    )
+    row = cursor.execute(
+        "SELECT subject_id FROM Subject WHERE subject_name = ?",
+        (subject_name,),
+    ).fetchone()
+
+    if not row:
+        conn.close()
+        return json_error(f"Subject not found: {subject_name}", 404)
+
+    subject_id = row["subject_id"]
+    cursor.execute(
+        """
+        INSERT INTO ClassSchedule
+        (subject_id, day, start_time, end_time, is_free_period)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (subject_id, day, start, end, is_free),
+    )
+    conn.commit()
+    conn.close()
+
+    return jsonify(
+        {
+            "status": "ok",
+            "schedule": {
+                "subject_id": subject_id,
+                "subject_name": subject_name,
+                "day": day,
+                "start_time": start,
+                "end_time": end,
+                "is_free_period": bool(is_free),
+            },
+        }
+    )
 
 
 @app.route("/send-message", methods=["GET", "POST"])
@@ -155,6 +565,26 @@ def send_message():
         return render_template("send_message.html", msg="Message sent successfully")
 
     return render_template("send_message.html")
+
+
+@app.route("/api/messages", methods=["POST"])
+def api_send_message():
+    auth_error = require_admin_json()
+    if auth_error:
+        return auth_error
+
+    data = request.get_json(silent=True) or {}
+    content = (data.get("content") or "").strip()
+    if not content:
+        return json_error("Message content is required.", 400)
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO Message (content) VALUES (?)", (content,))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"status": "ok"})
 
 
 @app.route("/display-message")
@@ -185,6 +615,22 @@ def warnings():
     )
 
 
+@app.route("/api/warnings")
+def api_warnings():
+    auth_error = require_admin_json()
+    if auth_error:
+        return auth_error
+
+    subject_warnings, exam_warnings = get_attendance_summary()
+    return jsonify(
+        {
+            "status": "ok",
+            "subject_warnings": subject_warnings,
+            "exam_warnings": exam_warnings,
+        }
+    )
+
+
 from flask import send_file
 from logic.export_excel import export_attendance_excel
 
@@ -198,46 +644,211 @@ def export_excel():
 
     return send_file(file_name, as_attachment=True)
 
-import subprocess
 
-@app.route("/face-register", methods=["GET", "POST"])
+@app.route("/api/reports/export")
+def api_export_excel():
+    auth_error = require_admin_json()
+    if auth_error:
+        return auth_error
+
+    file_name = "attendance_report.xlsx"
+    export_attendance_excel(file_name)
+    return send_file(file_name, as_attachment=True)
+
+@app.route("/face-register", methods=["GET"])
 def face_register():
     if "admin" not in session:
         return redirect(url_for("login"))
 
     conn = get_db_connection()
-    students = conn.execute("SELECT roll_no, name FROM Student").fetchall()
+    students = conn.execute(
+        "SELECT student_id, roll_no, name FROM Student ORDER BY roll_no"
+    ).fetchall()
     conn.close()
 
-    if request.method == "POST":
-        roll = request.form["roll"]
-
-        # Get student name from DB
-        conn = get_db_connection()
-        student = conn.execute("SELECT name FROM Student WHERE roll_no = ?", (roll,)).fetchone()
-        conn.close()
-
-        if not student:
-            return render_template(
-                "face_register.html",
-                students=students,
-                msg="Student not found"
-            )
-
-        name = student[0]
-
-        # Run face capture script
-        subprocess.run(
-            ["python", "ai/register_student.py", name, roll]
-        )
-
-        return render_template(
-            "face_register.html",
-            students=students,
-            msg="Face registration completed successfully"
-        )
-
     return render_template("face_register.html", students=students)
+
+
+@app.route("/face-register/capture", methods=["POST"])
+def face_register_capture():
+    if "admin" not in session:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+
+    if not FACE_RECOGNITION_AVAILABLE:
+        return jsonify(
+            {
+                "status": "error",
+                "message": "face_recognition is not available. Install it to register faces.",
+            }
+        ), 500
+
+    payload = request.get_json(silent=True) or {}
+    student_id = payload.get("student_id")
+    image_data = payload.get("image")
+
+    try:
+        student_id = int(student_id)
+    except (TypeError, ValueError):
+        return jsonify({"status": "error", "message": "Invalid student selection."}), 400
+
+    if not image_data:
+        return jsonify({"status": "error", "message": "No image provided."}), 400
+
+    image_bytes = decode_image_data_url(image_data)
+    if not image_bytes:
+        return jsonify({"status": "error", "message": "Invalid image data."}), 400
+
+    image = face_recognition.load_image_file(io.BytesIO(image_bytes))
+    encodings = face_recognition.face_encodings(image)
+    if not encodings:
+        return jsonify({"status": "error", "message": "No face detected."}), 400
+
+    encoding = encodings[0]
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT OR REPLACE INTO StudentFace (student_id, encoding) VALUES (?, ?)",
+            (student_id, sqlite3.Binary(encoding.tobytes())),
+        )
+        conn.commit()
+    except sqlite3.OperationalError as exc:
+        logger.error("Face registration DB error: %s", exc)
+        return jsonify({"status": "error", "message": "Database is locked. Try again."}), 500
+    finally:
+        if conn:
+            conn.close()
+
+    load_face_cache(force=True)
+    logger.info("Face registered for student_id=%s", student_id)
+    return jsonify({"status": "ok"})
+
+
+@app.route("/api/face-register/capture", methods=["POST"])
+def api_face_register_capture():
+    return face_register_capture()
+
+
+@app.route("/recognize", methods=["POST"])
+def recognize():
+    if "admin" not in session:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+
+    if not FACE_RECOGNITION_AVAILABLE:
+        return jsonify(
+            {
+                "status": "error",
+                "message": "face_recognition is not available. Install it to use recognition.",
+            }
+        ), 500
+
+    payload = request.get_json(silent=True) or {}
+    schedule_id = payload.get("schedule_id")
+    image_data = payload.get("image")
+
+    try:
+        schedule_id = int(schedule_id)
+    except (TypeError, ValueError):
+        return jsonify({"status": "error", "message": "Invalid schedule id."}), 400
+
+    if not image_data:
+        return jsonify({"status": "error", "message": "No image provided."}), 400
+
+    ip = request.remote_addr or "unknown"
+    now = time.time()
+    last = LAST_RECOGNITION_BY_IP.get(ip, 0)
+    if (now - last) < RECOGNITION_MIN_INTERVAL_SECONDS:
+        return jsonify({"status": "error", "message": "Please slow down."}), 429
+    LAST_RECOGNITION_BY_IP[ip] = now
+
+    image_bytes = decode_image_data_url(image_data)
+    if not image_bytes:
+        return jsonify({"status": "error", "message": "Invalid image data."}), 400
+
+    image = face_recognition.load_image_file(io.BytesIO(image_bytes))
+    face_locations = face_recognition.face_locations(image)
+    encodings = face_recognition.face_encodings(image, face_locations)
+
+    if not encodings:
+        return jsonify({"status": "ok", "recognized": [], "message": "No face detected."}), 200
+
+    known_faces = load_face_cache()
+    if not known_faces:
+        return jsonify(
+            {"status": "error", "message": "No registered faces available."}
+        ), 400
+
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        schedule = cursor.execute(
+            """
+            SELECT schedule_id, subject_id, day, is_free_period
+            FROM ClassSchedule
+            WHERE schedule_id = ?
+            """,
+            (schedule_id,),
+        ).fetchone()
+
+        if not schedule:
+            return jsonify({"status": "error", "message": "Schedule not found."}), 404
+
+        if schedule["is_free_period"]:
+            return jsonify(
+                {
+                    "status": "ok",
+                    "recognized": [],
+                    "message": "Free period. Attendance not recorded.",
+                }
+            ), 200
+
+        scan_no = compute_scan_no(schedule_id, schedule["day"], cursor)
+        subject_id = schedule["subject_id"]
+    except sqlite3.OperationalError as exc:
+        logger.error("Recognition DB error: %s", exc)
+        return jsonify({"status": "error", "message": "Database is locked. Try again."}), 500
+    finally:
+        if conn:
+            conn.close()
+
+    known_encodings = [face["encoding"] for face in known_faces]
+    recognized_names = []
+    recognized_ids = set()
+
+    for encoding in encodings:
+        matches = face_recognition.compare_faces(known_encodings, encoding, tolerance=0.5)
+        if True in matches:
+            match_index = matches.index(True)
+            match = known_faces[match_index]
+            student_id = match["student_id"]
+            if student_id in recognized_ids:
+                continue
+            recognized_ids.add(student_id)
+
+            inserted = mark_schedule_attendance(student_id, subject_id, schedule_id, scan_no)
+            if inserted:
+                recognized_names.append(match["name"])
+                logger.info(
+                    "Attendance recorded: student_id=%s schedule_id=%s",
+                    student_id,
+                    schedule_id,
+                )
+
+    if recognized_names:
+        return jsonify(
+            {"status": "ok", "recognized": recognized_names, "message": "Attendance updated."}
+        )
+
+    return jsonify(
+        {"status": "ok", "recognized": [], "message": "No matches found."}
+    )
+
+
+@app.route("/api/recognize", methods=["POST"])
+def api_recognize():
+    return recognize()
 
 if __name__ == "__main__":
     app.run(debug=True)

@@ -69,18 +69,14 @@ AttendX is a comprehensive attendance management system that uses facial recogni
 1. Log in to the admin dashboard
 2. Navigate to "Register Student"
 3. Fill in student details (roll number, name, department, semester)
-4. For face registration, run the separate script:
-   ```bash
-   python ai/register_student.py
-   ```
+4. Open `/face-register` from the dashboard
+5. Select a student, start the camera, and capture a face encoding
 
 ### Taking Attendance
 
-1. Run the face recognition script:
-   ```bash
-   python ai/face_recognition_live.py
-   ```
-2. The system will automatically detect and mark attendance for recognized students
+1. Open `/schedule` and pick the day
+2. Click **Start Camera** for a schedule row
+3. The system performs live recognition and marks attendance automatically
 
 ### Viewing Reports
 
@@ -114,6 +110,26 @@ AttendX/
 - `GET/POST /register-student` - Student registration
 - `GET /students` - View registered students
 - `GET /reports` - Attendance reports
+- `GET /schedule` - Schedule management + live recognition
+- `GET /face-register` - In-browser face registration
+- `POST /face-register/capture` - Face capture endpoint
+- `POST /recognize` - Live recognition endpoint
+
+### JSON API (for Vercel frontend)
+
+- `POST /api/login`
+- `POST /api/logout`
+- `GET /api/students`
+- `POST /api/students`
+- `GET /api/schedule`
+- `POST /api/schedule`
+- `POST /api/face-register/capture`
+- `POST /api/recognize`
+- `GET /api/warnings`
+- `POST /api/messages`
+- `GET /api/reports/export`
+
+See `INTEGRATION.md` for CORS and cookie configuration.
 
 ## Testing
 
@@ -141,3 +157,4 @@ For issues and questions, please create an issue in the repository or contact th
 ---
 
 **Note**: Ensure your camera is properly configured and accessible for face recognition features to work correctly.
+Camera access typically requires HTTPS when not running on localhost.

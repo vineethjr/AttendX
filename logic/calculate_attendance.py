@@ -31,14 +31,25 @@ def overall_attendance(student_id):
     cursor = conn.cursor()
 
     total = cursor.execute(
-        "SELECT COUNT(DISTINCT subject_id, date) FROM Attendance"
+        """
+        SELECT COUNT(*)
+        FROM (
+            SELECT DISTINCT subject_id, date
+            FROM Attendance
+            WHERE student_id=?
+        )
+        """,
+        (student_id,)
     ).fetchone()[0]
 
     present = cursor.execute(
         """
-        SELECT COUNT(DISTINCT subject_id, date)
-        FROM Attendance
-        WHERE student_id=? AND status=1
+        SELECT COUNT(*)
+        FROM (
+            SELECT DISTINCT subject_id, date
+            FROM Attendance
+            WHERE student_id=? AND status=1
+        )
         """,
         (student_id,)
     ).fetchone()[0]

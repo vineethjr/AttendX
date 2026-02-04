@@ -21,15 +21,21 @@ def mark_scan(roll_no, subject_name, scan_no, status):
 
     # Get subject_id
     cursor.execute(
-    "INSERT OR IGNORE INTO Subject (subject_name) VALUES (?)",
-    (subject_name,)
-)
+        "INSERT OR IGNORE INTO Subject (subject_name, total_classes) VALUES (?, 0)",
+        (subject_name,)
+    )
 
 
-    subject_id = cursor.execute(
+    subject_row = cursor.execute(
         "SELECT subject_id FROM Subject WHERE subject_name=?",
         (subject_name,)
-    ).fetchone()[0]
+    ).fetchone()
+
+    if not subject_row:
+        conn.close()
+        return False
+
+    subject_id = subject_row[0]
 
     # Insert scan record (unique per scan)
     try:
